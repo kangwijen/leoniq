@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 
-const getWsUrl = () => {
+export const getWsUrl = () => {
   if (process.env.NEXT_PUBLIC_WS_URL) {
     return process.env.NEXT_PUBLIC_WS_URL
   }
@@ -26,10 +26,6 @@ export const RealtimeRefresh = () => {
     let stopped = false
 
     const connect = () => {
-      if (stopped) {
-        return
-      }
-
       websocket = new WebSocket(getWsUrl())
 
       websocket.onmessage = () => {
