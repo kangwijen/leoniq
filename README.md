@@ -1,36 +1,120 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Leoniq Monitoring
 
-## Getting Started
+Leoniq is a self hosted uptime monitoring app built with Next.js, Postgres, and a worker process.
 
-First, run the development server:
+It provides:
+- HTTP and TCP monitor checks
+- Live status updates over WebSocket
+- Dashboard views for uptime and latency
+- Per user webhook configuration
+- Down only summary webhook delivery
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Requirements
+
+- Node.js 20+
+- npm
+- Docker and Docker Compose for containerized runs
+- PostgreSQL 16+ if running without Docker
+
+## Environment Variables
+
+Required values:
+
+```dotenv
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/leoniq
+BETTER_AUTH_SECRET=secret
+BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_WS_URL=ws://localhost:4001
+WORKER_POLL_INTERVAL_MS=10000
+MONITOR_RETENTION_DAYS=30
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Additional optional worker values:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```dotenv
+WEBHOOK_SUMMARY_INTERVAL_MS=300000
+WEBHOOK_TIMEOUT_MS=10000
+WS_PORT=4001
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Quick Start With Docker
 
-## Learn More
+1. Copy environment values
+2. Start database, app, and worker
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+docker compose up -d --build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open `http://localhost:3000`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Local Development
 
-## Deploy on Vercel
+```bash
+npm ci
+npm run db:migrate
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+In a second terminal:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run worker
+```
+
+## Database Workflow
+
+Generate new migration files after schema changes:
+
+```bash
+npm run db:generate
+```
+
+Apply generated migrations:
+
+```bash
+npm run db:migrate
+```
+
+Push schema directly without generating migrations:
+
+```bash
+npm run db:push
+```
+
+## Monitoring Behavior
+
+- The worker scans active monitors on each poll cycle
+- Only due monitors are executed based on `intervalSeconds`
+- Each check writes a row to `check_results` and updates monitor state
+- On monitor creation, the API runs an immediate first check
+- The worker publishes monitor updates over WebSocket
+- Old check history is cleaned using `MONITOR_RETENTION_DAYS`
+
+## Webhook Behavior
+
+Set a webhook URL from the dashboard via `Webhook settings`. Currently only support Discord webhook.
+
+## Scripts
+
+- `npm run dev` start Next.js development server
+- `npm run build` build production app
+- `npm run start` run production app
+- `npm run worker` run monitoring worker
+- `npm run lint` run ESLint
+- `npm run test:jest` run Jest tests with coverage
+- `npm run test` run Node test suite
+
+## Testing
+
+Run Jest coverage:
+
+```bash
+npm run test:jest -- --runInBand
+```
+
+Run Node tests:
+
+```bash
+npm run test
+```
