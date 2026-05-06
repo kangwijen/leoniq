@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { MonitorActions } from "@/components/dashboard/monitor-actions"
+import { UptimeSparkline } from "@/components/dashboard/uptime-sparkline"
 import {
   Table,
   TableBody,
@@ -18,6 +19,7 @@ type Monitor = {
   lastStatus: "up" | "down" | null
   intervalSeconds: number
   lastCheckedAt: string | Date | null
+  uptimeSeries: number[]
 }
 
 type MonitorTableProps = {
@@ -33,6 +35,7 @@ export const MonitorTable = ({ monitors }: MonitorTableProps) => (
           <TableHead className="text-zinc-300">Type</TableHead>
           <TableHead className="text-zinc-300">Status</TableHead>
           <TableHead className="text-zinc-300">Interval</TableHead>
+          <TableHead className="text-zinc-300">Uptime</TableHead>
           <TableHead className="text-zinc-300">Last check</TableHead>
           <TableHead className="text-right text-zinc-300">Actions</TableHead>
         </TableRow>
@@ -71,6 +74,11 @@ export const MonitorTable = ({ monitors }: MonitorTableProps) => (
               )}
             </TableCell>
             <TableCell className="text-zinc-200">{monitor.intervalSeconds}s</TableCell>
+            <TableCell>
+              <div className="flex justify-start">
+                <UptimeSparkline values={monitor.uptimeSeries} />
+              </div>
+            </TableCell>
             <TableCell className="text-zinc-400">
               {monitor.lastCheckedAt
                 ? new Date(monitor.lastCheckedAt).toLocaleString()

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { monitorRepository } from "@/lib/monitor/repository"
+import { checkResultsRepository, monitorRepository } from "@/lib/monitor/repository"
 import { requireSession } from "@/lib/session"
 import { Button } from "@/components/ui/button"
 import { RealtimeRefresh } from "@/components/dashboard/realtime-refresh"
@@ -9,6 +9,16 @@ import { MonitorTable } from "@/components/dashboard/monitor-table"
 export default async function DashboardPage() {
   const session = await requireSession()
   const monitors = await monitorRepository.list({ userId: session.user.id })
+  const monitorSeries = await Promise.all(
+    monitors.map(async monitor => {
+      const points = await checkResultsRepository.listByMonitor(monitor.id, undefined, 20)
+      return {
+        monitorId: monitor.id,
+        series: points.map(point => (point.status === "up" ? 1 : 0)),
+      }
+    })
+  )
+  const seriesByMonitorId = new Map(monitorSeries.map(item => [item.monitorId, item.series]))
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 md:px-8">
@@ -59,6 +69,7 @@ export default async function DashboardPage() {
             ...item,
             type: item.type as "http" | "tcp",
             lastStatus: (item.lastStatus as "up" | "down" | null) ?? null,
+            uptimeSeries: seriesByMonitorId.get(item.id) ?? [],
           }))}
         />
       )}
