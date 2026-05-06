@@ -43,40 +43,58 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
   const [timeoutMs, setTimeoutMs] = useState(String(monitor.timeoutMs))
   const [active, setActive] = useState(monitor.active ? "active" : "paused")
 
+  const readErrorMessage = async (response: Response, fallback: string) => {
+    try {
+      const payload = (await response.json()) as { error?: string; message?: string }
+      if (payload.error && payload.error.trim().length > 0) {
+        return payload.error
+      }
+      if (payload.message && payload.message.trim().length > 0) {
+        return payload.message
+      }
+      return fallback
+    } catch {
+      return fallback
+    }
+  }
+
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setLoading(true)
+    try {
+      setLoading(true)
 
-    const payload = {
-      name,
-      type,
-      url: type === "http" ? url : undefined,
-      host: type === "tcp" ? host : undefined,
-      port: type === "tcp" ? Number(port) : undefined,
-      intervalSeconds: Number(intervalSeconds),
-      timeoutMs: Number(timeoutMs),
-      active: active === "active",
+      const payload = {
+        name,
+        type,
+        url: type === "http" ? url : undefined,
+        host: type === "tcp" ? host : undefined,
+        port: type === "tcp" ? Number(port) : undefined,
+        intervalSeconds: Number(intervalSeconds),
+        timeoutMs: Number(timeoutMs),
+        active: active === "active",
+      }
+
+      const response = await fetch(`/api/monitors/${monitor.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        toast.error(await readErrorMessage(response, "Failed to update monitor"))
+        return
+      }
+
+      toast.success("Monitor updated")
+      router.push(`/dashboard/monitors/${monitor.id}`)
+      router.refresh()
+    } catch {
+      toast.error("Network error while updating monitor")
+    } finally {
+      setLoading(false)
     }
-
-    const response = await fetch(`/api/monitors/${monitor.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-
-    const data = await response.json()
-    setLoading(false)
-
-    if (!response.ok) {
-      toast.error(data.error || "Failed to update monitor")
-      return
-    }
-
-    toast.success("Monitor updated")
-    router.push(`/dashboard/monitors/${monitor.id}`)
-    router.refresh()
   }
 
   return (
@@ -96,6 +114,7 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
               value={name}
               onChange={event => setName(event.target.value)}
               required
+              maxLength={120}
               className="h-11"
             />
           </div>
@@ -121,6 +140,7 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
                 value={url}
                 onChange={event => setUrl(event.target.value)}
                 required
+                maxLength={2048}
                 className="h-11"
               />
             </div>
@@ -133,6 +153,7 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
                   value={host}
                   onChange={event => setHost(event.target.value)}
                   required
+                  maxLength={253}
                   className="h-11"
                 />
               </div>
@@ -143,6 +164,9 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
                   value={port}
                   onChange={event => setPort(event.target.value)}
                   required
+                  inputMode="numeric"
+                  pattern="[0-9]{1,5}"
+                  maxLength={5}
                   className="h-11"
                 />
               </div>
@@ -157,6 +181,9 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
                 value={intervalSeconds}
                 onChange={event => setIntervalSeconds(event.target.value)}
                 required
+                inputMode="numeric"
+                pattern="[0-9]{1,6}"
+                maxLength={6}
                 className="h-11"
               />
             </div>
@@ -167,6 +194,9 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
                 value={timeoutMs}
                 onChange={event => setTimeoutMs(event.target.value)}
                 required
+                inputMode="numeric"
+                pattern="[0-9]{1,7}"
+                maxLength={7}
                 className="h-11"
               />
             </div>

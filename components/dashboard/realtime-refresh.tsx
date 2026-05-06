@@ -23,8 +23,13 @@ export const RealtimeRefresh = () => {
     let websocket: WebSocket | null = null
     let timeoutId: ReturnType<typeof setTimeout> | null = null
     let refreshTimeoutId: ReturnType<typeof setTimeout> | null = null
+    let stopped = false
 
     const connect = () => {
+      if (stopped) {
+        return
+      }
+
       websocket = new WebSocket(getWsUrl())
 
       websocket.onmessage = () => {
@@ -38,13 +43,17 @@ export const RealtimeRefresh = () => {
       }
 
       websocket.onclose = () => {
-        timeoutId = setTimeout(connect, 1500)
+        if (!stopped) {
+          timeoutId = setTimeout(connect, 1500)
+        }
       }
     }
 
     connect()
 
     return () => {
+      stopped = true
+
       if (timeoutId) {
         clearTimeout(timeoutId)
       }
@@ -53,7 +62,8 @@ export const RealtimeRefresh = () => {
         clearTimeout(refreshTimeoutId)
       }
 
-      if (websocket && websocket.readyState === websocket.OPEN) {
+      if (websocket) {
+        websocket.onclose = null
         websocket.close()
       }
     }

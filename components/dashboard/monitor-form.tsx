@@ -28,39 +28,57 @@ export const MonitorForm = () => {
   const [intervalSeconds, setIntervalSeconds] = useState("60")
   const [timeoutMs, setTimeoutMs] = useState("5000")
 
+  const readErrorMessage = async (response: Response, fallback: string) => {
+    try {
+      const payload = (await response.json()) as { error?: string; message?: string }
+      if (payload.error && payload.error.trim().length > 0) {
+        return payload.error
+      }
+      if (payload.message && payload.message.trim().length > 0) {
+        return payload.message
+      }
+      return fallback
+    } catch {
+      return fallback
+    }
+  }
+
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setLoading(true)
+    try {
+      setLoading(true)
 
-    const payload = {
-      name,
-      type,
-      url: type === "http" ? url : undefined,
-      host: type === "tcp" ? host : undefined,
-      port: type === "tcp" ? Number(port) : undefined,
-      intervalSeconds: Number(intervalSeconds),
-      timeoutMs: Number(timeoutMs),
+      const payload = {
+        name,
+        type,
+        url: type === "http" ? url : undefined,
+        host: type === "tcp" ? host : undefined,
+        port: type === "tcp" ? Number(port) : undefined,
+        intervalSeconds: Number(intervalSeconds),
+        timeoutMs: Number(timeoutMs),
+      }
+
+      const response = await fetch("/api/monitors", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        toast.error(await readErrorMessage(response, "Failed to create monitor"))
+        return
+      }
+
+      toast.success("Monitor created")
+      router.push("/dashboard")
+      router.refresh()
+    } catch {
+      toast.error("Network error while creating monitor")
+    } finally {
+      setLoading(false)
     }
-
-    const response = await fetch("/api/monitors", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-
-    const data = await response.json()
-    setLoading(false)
-
-    if (!response.ok) {
-      toast.error(data.error || "Failed to create monitor")
-      return
-    }
-
-    toast.success("Monitor created")
-    router.push("/dashboard")
-    router.refresh()
   }
 
   return (
@@ -81,6 +99,8 @@ export const MonitorForm = () => {
               onChange={event => setName(event.target.value)}
               placeholder="Public API Health"
               required
+              maxLength={120}
+              className="h-11"
             />
           </div>
 
@@ -106,6 +126,7 @@ export const MonitorForm = () => {
                 onChange={event => setUrl(event.target.value)}
                 placeholder="https://api.example.com/health"
                 required
+                maxLength={2048}
                 className="h-11"
               />
             </div>
@@ -119,6 +140,7 @@ export const MonitorForm = () => {
                   onChange={event => setHost(event.target.value)}
                   placeholder="example.com"
                   required
+                  maxLength={253}
                   className="h-11"
                 />
               </div>
@@ -130,6 +152,9 @@ export const MonitorForm = () => {
                   onChange={event => setPort(event.target.value)}
                   placeholder="443"
                   required
+                  inputMode="numeric"
+                  pattern="[0-9]{1,5}"
+                  maxLength={5}
                   className="h-11"
                 />
               </div>
@@ -144,6 +169,9 @@ export const MonitorForm = () => {
                 value={intervalSeconds}
                 onChange={event => setIntervalSeconds(event.target.value)}
                 required
+                inputMode="numeric"
+                pattern="[0-9]{1,6}"
+                maxLength={6}
                 className="h-11"
               />
             </div>
@@ -154,6 +182,9 @@ export const MonitorForm = () => {
                 value={timeoutMs}
                 onChange={event => setTimeoutMs(event.target.value)}
                 required
+                inputMode="numeric"
+                pattern="[0-9]{1,7}"
+                maxLength={7}
                 className="h-11"
               />
             </div>

@@ -26,48 +26,70 @@ type MonitorActionsProps = {
 export const MonitorActions = ({ monitorId, active, compact = false }: MonitorActionsProps) => {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const readErrorMessage = async (response: Response, fallback: string) => {
+    try {
+      const payload = (await response.json()) as { error?: string; message?: string }
+      if (payload.error && payload.error.trim().length > 0) {
+        return payload.error
+      }
+      if (payload.message && payload.message.trim().length > 0) {
+        return payload.message
+      }
+      return fallback
+    } catch {
+      return fallback
+    }
+  }
 
   const toggleActive = async () => {
-    setLoading(true)
+    try {
+      setLoading(true)
 
-    const response = await fetch(`/api/monitors/${monitorId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        active: !active,
-      }),
-    })
+      const response = await fetch(`/api/monitors/${monitorId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          active: !active,
+        }),
+      })
 
-    setLoading(false)
+      if (!response.ok) {
+        toast.error(await readErrorMessage(response, "Failed to update monitor state"))
+        return
+      }
 
-    if (!response.ok) {
-      toast.error("Failed to update monitor state")
-      return
+      toast.success(active ? "Monitor paused" : "Monitor resumed")
+      router.refresh()
+    } catch {
+      toast.error("Network error while updating monitor state")
+    } finally {
+      setLoading(false)
     }
-
-    toast.success(active ? "Monitor paused" : "Monitor resumed")
-    router.refresh()
   }
 
   const removeMonitor = async () => {
-    setLoading(true)
+    try {
+      setLoading(true)
 
-    const response = await fetch(`/api/monitors/${monitorId}`, {
-      method: "DELETE",
-    })
+      const response = await fetch(`/api/monitors/${monitorId}`, {
+        method: "DELETE",
+      })
 
-    setLoading(false)
+      if (!response.ok) {
+        toast.error(await readErrorMessage(response, "Failed to delete monitor"))
+        return
+      }
 
-    if (!response.ok) {
-      toast.error("Failed to delete monitor")
-      return
+      toast.success("Monitor deleted")
+      router.push("/dashboard")
+      router.refresh()
+    } catch {
+      toast.error("Network error while deleting monitor")
+    } finally {
+      setLoading(false)
     }
-
-    toast.success("Monitor deleted")
-    router.push("/dashboard")
-    router.refresh()
   }
 
   return (

@@ -25,43 +25,45 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setLoading(true)
+    try {
+      setLoading(true)
 
-    if (mode === "register") {
-      const { error } = await authClient.signUp.email({
-        name,
+      if (mode === "register") {
+        const { error } = await authClient.signUp.email({
+          name,
+          email,
+          password,
+        })
+
+        if (error) {
+          toast.error(error.message || "Unable to register")
+          return
+        }
+
+        toast.success("Account created")
+        router.push("/dashboard")
+        router.refresh()
+        return
+      }
+
+      const { error } = await authClient.signIn.email({
         email,
         password,
       })
 
-      setLoading(false)
-
       if (error) {
-        toast.error(error.message || "Unable to register")
+        toast.error("Invalid email or password")
         return
       }
 
-      toast.success("Account created")
+      toast.success("Welcome back")
       router.push("/dashboard")
       router.refresh()
-      return
+    } catch {
+      toast.error("Network error while submitting authentication request")
+    } finally {
+      setLoading(false)
     }
-
-    const { error } = await authClient.signIn.email({
-      email,
-      password,
-    })
-
-    setLoading(false)
-
-    if (error) {
-      toast.error("Invalid email or password")
-      return
-    }
-
-    toast.success("Welcome back")
-    router.push("/dashboard")
-    router.refresh()
   }
 
   return (
@@ -88,6 +90,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
                 placeholder="Ops Engineer"
                 required
                 minLength={2}
+                maxLength={100}
                 className="h-11"
               />
             </div>
@@ -101,6 +104,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               placeholder="name@company.com"
               type="email"
               required
+              maxLength={254}
+              autoComplete={mode === "login" ? "username" : "email"}
               className="h-11"
             />
           </div>
@@ -113,6 +118,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               type="password"
               required
               minLength={12}
+              maxLength={128}
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
               className="h-11"
             />
           </div>
