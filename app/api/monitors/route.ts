@@ -6,6 +6,7 @@ import {
   validateMonitorTiming,
   validateTcpTarget,
 } from "@/lib/monitor/validation"
+import { executeAndPersistMonitorCheck } from "@/lib/monitor/executor"
 
 const parseBody = async (request: Request) => {
   try {
@@ -82,6 +83,12 @@ export async function POST(request: Request) {
     timeoutMs,
     retries: Number.isInteger(retries) ? retries : 1,
   })
+
+  try {
+    await executeAndPersistMonitorCheck(monitor, "api")
+  } catch (error) {
+    console.error("[api] initial monitor check failed", error)
+  }
 
   return NextResponse.json({ data: monitor }, { status: 201 })
 }

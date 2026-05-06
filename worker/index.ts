@@ -2,10 +2,8 @@ import "dotenv/config"
 import { and, desc, eq, lte } from "drizzle-orm"
 import { WebSocketServer } from "ws"
 import { db } from "../lib/db/client"
-import { checkResults, monitors, user } from "../lib/db/schema"
-import { runHttpCheck } from "../lib/monitor/http-check"
-import type { CheckResult } from "../lib/monitor/http-check"
-import { runTcpCheck } from "../lib/monitor/tcp-check"
+import { checkResults, monitors, user, webhookAttempts } from "../lib/db/schema"
+import { executeAndPersistMonitorCheck } from "../lib/monitor/executor"
 
 const WORKER_POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL_MS ?? 10000)
 const MAX_RETENTION_DAYS = Number(process.env.MONITOR_RETENTION_DAYS ?? 30)
@@ -25,70 +23,8 @@ const broadcast = (payload: Record<string, unknown>) => {
   }
 }
 
-const withRetries = async <T>(
-  retries: number,
-  fn: () => Promise<T>,
-  isSuccess: (value: T) => boolean
-) => {
-  let lastValue = await fn()
-
-  for (let attempt = 1; attempt <= retries; attempt += 1) {
-    if (isSuccess(lastValue)) {
-      return lastValue
-    }
-    lastValue = await fn()
-  }
-
-  return lastValue
-}
-
 const runSingleMonitor = async (monitor: typeof monitors.$inferSelect) => {
-  const execute = async (): Promise<CheckResult> =>
-    monitor.type === "http" && monitor.url
-      ? runHttpCheck({
-          url: monitor.url,
-          method: monitor.method,
-          timeoutMs: monitor.timeoutMs,
-          expectedStatusMin: monitor.expectedStatusMin,
-          expectedStatusMax: monitor.expectedStatusMax,
-        })
-      : monitor.type === "tcp" && monitor.host && monitor.port
-      ? runTcpCheck({
-          host: monitor.host,
-          port: monitor.port,
-          timeoutMs: monitor.timeoutMs,
-        })
-      : Promise.resolve({
-          status: "down" as const,
-          latencyMs: 0,
-          errorMessage: "Invalid monitor configuration",
-        })
-
-  const result = await withRetries(
-    Math.max(0, monitor.retries),
-    execute,
-    value => value.status === "up"
-  )
-
-  await db.insert(checkResults).values({
-    monitorId: monitor.id,
-    status: result.status,
-    latencyMs: result.latencyMs,
-    statusCode: result.statusCode ?? null,
-    errorMessage: result.errorMessage ?? null,
-    meta: null,
-  })
-
-  await db
-    .update(monitors)
-    .set({
-      lastCheckedAt: new Date(),
-      lastStatus: result.status,
-      lastLatencyMs: result.latencyMs,
-      updatedAt: new Date(),
-    })
-    .where(eq(monitors.id, monitor.id))
-
+  const result = await executeAndPersistMonitorCheck(monitor, "worker")
   broadcast({
     type: "monitor.update",
     monitorId: monitor.id,
@@ -117,6 +53,16 @@ const runChecks = async () => {
 const cleanupOldResults = async () => {
   const cutoff = new Date(Date.now() - MAX_RETENTION_DAYS * 24 * 60 * 60 * 1000)
   await db.delete(checkResults).where(lte(checkResults.checkedAt, cutoff))
+}
+
+const isDiscordWebhookUrl = (value: string) => {
+  try {
+    const url = new URL(value)
+    const isDiscordHost = url.hostname === "discord.com" || url.hostname === "discordapp.com"
+    return isDiscordHost && url.pathname.includes("/api/webhooks/")
+  } catch {
+    return false
+  }
 }
 
 const sendWebhookSummaries = async () => {
@@ -167,23 +113,72 @@ const sendWebhookSummaries = async () => {
       services,
       downServices,
     }
+    const discordPayload = {
+      content: `Monitor alert: ${downServices.length} service(s) down`,
+      embeds: [
+        {
+          title: "Monitoring Summary",
+          description: `Total: ${payload.overall.total} | Up: ${payload.overall.up} | Down: ${payload.overall.down}`,
+          color: 15158332,
+          fields: downServices.map(service => ({
+            name: `${service.name} (${service.type.toUpperCase()})`,
+            value: service.errorMessage ?? "No error details",
+            inline: false,
+          })),
+          timestamp: payload.checkedAt,
+        },
+      ],
+      allowed_mentions: {
+        parse: [],
+      },
+    }
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS)
+    let success = false
+    let statusCode: number | null = null
+    let errorMessage: string | null = null
+    console.log(
+      `[worker] webhook attempt user=${item.id} url=${item.webhookUrl} down=${downServices.length}`
+    )
     try {
-      await fetch(item.webhookUrl as string, {
+      const requestBody = isDiscordWebhookUrl(item.webhookUrl as string) ? discordPayload : payload
+      const response = await fetch(item.webhookUrl as string, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
       })
+      statusCode = response.status
+      success = response.ok
+      if (!response.ok) {
+        const responseBody = await response.text()
+        errorMessage =
+          responseBody.trim().length > 0
+            ? `Webhook returned status ${response.status}: ${responseBody}`
+            : `Webhook returned status ${response.status}`
+      }
     } catch (error) {
-      console.error(`[worker] webhook send failed for user ${item.id}`, error)
+      errorMessage = error instanceof Error ? error.message : "Webhook request failed"
+      console.error(`[worker] webhook send failed for user ${item.id}`, errorMessage)
     } finally {
       clearTimeout(timeoutId)
     }
+
+    await db.insert(webhookAttempts).values({
+      userId: item.id,
+      webhookUrl: item.webhookUrl as string,
+      success,
+      statusCode,
+      errorMessage,
+      payload,
+    })
+
+    console.log(
+      `[worker] webhook attempt logged user=${item.id} success=${success} statusCode=${statusCode ?? "none"}`
+    )
   }
 }
 

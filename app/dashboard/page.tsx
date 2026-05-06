@@ -38,22 +38,20 @@ export default async function DashboardPage() {
               Live status, uptime, and latency across all website and socket monitors.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="max-w-full truncate rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1 text-xs text-zinc-300">
               Signed in as {session.user.name}
             </div>
+            <WebhookSettings initialWebhookUrl={user?.webhookUrl ?? null} />
+            <Button
+              asChild
+              className="h-10 cursor-pointer bg-emerald-500 text-black transition-colors duration-200 hover:bg-emerald-400"
+            >
+              <Link href="/dashboard/monitors/new">Add monitor</Link>
+            </Button>
           </div>
         </div>
       </header>
-
-      <div className="flex flex-wrap justify-stretch sm:justify-end">
-        <Button
-          asChild
-          className="h-11 w-full cursor-pointer bg-emerald-500 text-black transition-colors duration-200 hover:bg-emerald-400 sm:h-10 sm:w-auto"
-        >
-          <Link href="/dashboard/monitors/new">Add monitor</Link>
-        </Button>
-      </div>
 
       <DashboardKpis
         monitors={monitors.map(item => ({
@@ -61,8 +59,6 @@ export default async function DashboardPage() {
           lastStatus: (item.lastStatus as "up" | "down" | null) ?? null,
         }))}
       />
-
-      <WebhookSettings initialWebhookUrl={user?.webhookUrl ?? null} />
 
       {monitors.length === 0 ? (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-8 text-zinc-300">

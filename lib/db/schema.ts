@@ -188,6 +188,28 @@ export const alertEvents = pgTable(
   table => [index("alert_events_monitor_id_idx").on(table.monitorId)]
 )
 
+export const webhookAttempts = pgTable(
+  "webhook_attempts",
+  {
+    id: uuid("id")
+      .default(sql`gen_random_uuid()`)
+      .primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    webhookUrl: text("webhook_url").notNull(),
+    success: boolean("success").notNull(),
+    statusCode: integer("status_code"),
+    errorMessage: text("error_message"),
+    payload: jsonb("payload"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  table => [
+    index("webhook_attempts_user_id_idx").on(table.userId),
+    index("webhook_attempts_created_at_idx").on(table.createdAt),
+  ]
+)
+
 export const monitorWorkerLocks = pgTable(
   "monitor_worker_locks",
   {

@@ -5,6 +5,14 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 type WebhookSettingsProps = {
   initialWebhookUrl: string | null
@@ -48,33 +56,43 @@ export const WebhookSettings = ({ initialWebhookUrl }: WebhookSettingsProps) => 
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 sm:p-5">
-      <div className="mb-3">
-        <h2 className="text-base font-semibold text-zinc-100">Webhook alerts</h2>
-        <p className="text-sm text-zinc-400">
-          Sends a summary every 5 minutes when at least one service is down
-        </p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-        <div className="grid gap-2">
-          <Label htmlFor="webhookUrl">Webhook URL</Label>
-          <Input
-            id="webhookUrl"
-            type="url"
-            value={value}
-            onChange={event => setValue(event.target.value)}
-            placeholder="https://hooks.example.com/monitoring"
-            className="h-11"
-          />
-        </div>
+    <Dialog>
+      <DialogTrigger asChild>
         <Button
-          onClick={saveWebhook}
-          disabled={loading}
-          className="h-11 cursor-pointer bg-emerald-500 text-black transition-colors duration-200 hover:bg-emerald-400"
+          variant="outline"
+          className="h-10 cursor-pointer border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800"
         >
-          {loading ? "Saving..." : "Save webhook"}
+          Webhook settings
         </Button>
-      </div>
-    </section>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl border-zinc-800 bg-zinc-950 text-zinc-100">
+        <DialogHeader>
+          <DialogTitle>Webhook alerts</DialogTitle>
+          <DialogDescription className="text-zinc-400">
+            Sends a summary every 5 minutes when at least one service is down
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="grid gap-2">
+            <Label htmlFor="webhookUrl">Webhook URL</Label>
+            <Input
+              id="webhookUrl"
+              type="url"
+              value={value}
+              onChange={event => setValue(event.target.value)}
+              placeholder="https://hooks.example.com/monitoring"
+              className="h-11"
+            />
+          </div>
+          <Button
+            onClick={saveWebhook}
+            disabled={loading}
+            className="h-11 cursor-pointer bg-emerald-500 text-black transition-colors duration-200 hover:bg-emerald-400"
+          >
+            {loading ? "Saving..." : "Save webhook"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
