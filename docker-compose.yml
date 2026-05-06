@@ -1,0 +1,72 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: leoniq-db
+    environment:
+      POSTGRES_DB: leoniq
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d leoniq"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: leoniq-app
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://postgres:postgres@db:5432/leoniq
+      BETTER_AUTH_URL: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    command: sh -c "npm run db:push && npm run start"
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: leoniq-worker
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://postgres:postgres@db:5432/leoniq
+      WS_PORT: 4001
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    command: npm run worker
+    ports:
+      - "4001:4001"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: leoniq-migrate
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://postgres:postgres@db:5432/leoniq
+    depends_on:
+      db:
+        condition: service_healthy
+    command: npm run db:migrate
+    restart: "no"
+
+volumes:
+  pgdata:
