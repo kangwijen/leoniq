@@ -82,22 +82,28 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
   return (
     <Card className="border-zinc-800 bg-zinc-950/90 text-zinc-100 shadow-2xl">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Edit Monitor</CardTitle>
+        <CardTitle className="text-xl font-semibold sm:text-2xl">Edit Monitor</CardTitle>
         <CardDescription className="text-zinc-400">
           Update target, timing, and status settings for this monitor.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="grid gap-4" onSubmit={submit}>
+        <form className="grid gap-4 sm:gap-5" onSubmit={submit}>
           <div className="grid gap-2">
             <Label htmlFor="name">Monitor name</Label>
-            <Input id="name" value={name} onChange={event => setName(event.target.value)} required />
+            <Input
+              id="name"
+              value={name}
+              onChange={event => setName(event.target.value)}
+              required
+              className="h-11"
+            />
           </div>
 
           <div className="grid gap-2">
             <Label>Monitor type</Label>
             <Select value={type} onValueChange={value => setType(value as MonitorType)}>
-              <SelectTrigger className="cursor-pointer">
+              <SelectTrigger className="h-11 cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -110,7 +116,13 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
           {type === "http" ? (
             <div className="grid gap-2">
               <Label htmlFor="url">URL to check</Label>
-              <Input id="url" value={url} onChange={event => setUrl(event.target.value)} required />
+              <Input
+                id="url"
+                value={url}
+                onChange={event => setUrl(event.target.value)}
+                required
+                className="h-11"
+              />
             </div>
           ) : (
             <>
@@ -121,6 +133,7 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
                   value={host}
                   onChange={event => setHost(event.target.value)}
                   required
+                  className="h-11"
                 />
               </div>
               <div className="grid gap-2">
@@ -130,6 +143,7 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
                   value={port}
                   onChange={event => setPort(event.target.value)}
                   required
+                  className="h-11"
                 />
               </div>
             </>
@@ -143,6 +157,7 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
                 value={intervalSeconds}
                 onChange={event => setIntervalSeconds(event.target.value)}
                 required
+                className="h-11"
               />
             </div>
             <div className="grid gap-2">
@@ -152,6 +167,7 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
                 value={timeoutMs}
                 onChange={event => setTimeoutMs(event.target.value)}
                 required
+                className="h-11"
               />
             </div>
           </div>
@@ -159,7 +175,7 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
           <div className="grid gap-2">
             <Label>Status</Label>
             <Select value={active} onValueChange={value => setActive(value)}>
-              <SelectTrigger className="cursor-pointer">
+              <SelectTrigger className="h-11 cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

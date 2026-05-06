@@ -67,7 +67,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   return (
     <Card className="border-zinc-800 bg-zinc-950/90 text-zinc-100 shadow-2xl">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">
+        <CardTitle className="text-xl font-semibold sm:text-2xl">
           {mode === "login" ? "Sign in" : "Create account"}
         </CardTitle>
         <CardDescription className="text-zinc-400">
@@ -77,7 +77,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="grid gap-4" onSubmit={submit}>
+        <form className="grid gap-4 sm:gap-5" onSubmit={submit}>
           {mode === "register" && (
             <div className="grid gap-2">
               <Label htmlFor="name">Name</Label>
@@ -88,6 +88,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
                 placeholder="Ops Engineer"
                 required
                 minLength={2}
+                className="h-11"
               />
             </div>
           )}
@@ -100,6 +101,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               placeholder="name@company.com"
               type="email"
               required
+              className="h-11"
             />
           </div>
           <div className="grid gap-2">
@@ -111,6 +113,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               type="password"
               required
               minLength={12}
+              className="h-11"
             />
           </div>
           <Button

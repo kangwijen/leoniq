@@ -50,13 +50,13 @@ export const DashboardKpis = ({ monitors }: DashboardKpisProps) => {
       {cards.map(card => (
         <article
           key={card.title}
-          className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 shadow-[0_0_0_1px_rgba(24,24,27,0.8)] transition-colors duration-200 hover:border-zinc-700"
+          className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 shadow-[0_0_0_1px_rgba(24,24,27,0.8)] transition-colors duration-200 hover:border-zinc-700 sm:p-5"
         >
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm text-zinc-400">{card.title}</p>
             {card.icon}
           </div>
-          <p className="text-3xl font-semibold tracking-tight text-zinc-100">{card.value}</p>
+          <p className="text-2xl font-semibold tracking-tight text-zinc-100 sm:text-3xl">{card.value}</p>
           <p className="mt-1 text-xs text-zinc-500">{card.helper}</p>
         </article>
       ))}

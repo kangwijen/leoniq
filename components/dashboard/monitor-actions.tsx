@@ -71,19 +71,19 @@ export const MonitorActions = ({ monitorId, active, compact = false }: MonitorAc
   }
 
   return (
-    <div className={compact ? "flex flex-wrap items-center gap-2" : "flex items-center gap-2"}>
+    <div className={compact ? "flex flex-wrap items-center gap-2" : "flex flex-wrap items-center gap-2"}>
       <Button
         asChild
         variant="outline"
         size={compact ? "default" : "sm"}
-        className="cursor-pointer border-zinc-700 bg-zinc-900 text-zinc-100 transition-colors duration-200 hover:bg-zinc-800"
+        className="h-11 cursor-pointer border-zinc-700 bg-zinc-900 px-4 text-zinc-100 transition-colors duration-200 hover:bg-zinc-800 sm:h-9 sm:px-3"
       >
         <Link href={`/dashboard/monitors/${monitorId}/edit`}>Edit</Link>
       </Button>
       <Button
         variant="outline"
         size={compact ? "default" : "sm"}
-        className="cursor-pointer border-zinc-700 bg-zinc-900 text-zinc-100 transition-colors duration-200 hover:bg-zinc-800"
+        className="h-11 cursor-pointer border-zinc-700 bg-zinc-900 px-4 text-zinc-100 transition-colors duration-200 hover:bg-zinc-800 sm:h-9 sm:px-3"
         onClick={toggleActive}
         disabled={loading}
       >
@@ -94,7 +94,7 @@ export const MonitorActions = ({ monitorId, active, compact = false }: MonitorAc
           <Button
             variant="destructive"
             size={compact ? "default" : "sm"}
-            className="cursor-pointer"
+            className="h-11 cursor-pointer px-4 sm:h-9 sm:px-3"
             disabled={loading}
           >
             Delete

@@ -24,12 +24,12 @@ export default async function MonitorDetailPage(segmentData: {
   const uptimePercent = totalChecks > 0 ? ((upChecks / totalChecks) * 100).toFixed(2) : "0.00"
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 md:px-8">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:gap-6 sm:py-8 md:px-8 md:py-10">
       <RealtimeRefresh />
-      <header className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-semibold text-zinc-100">{monitor.name}</h1>
+      <header className="space-y-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold text-zinc-100 sm:text-3xl">{monitor.name}</h1>
             {monitor.lastStatus === "up" ? (
               <Badge className="bg-emerald-500/20 text-emerald-300">up</Badge>
             ) : monitor.lastStatus === "down" ? (
@@ -38,9 +38,11 @@ export default async function MonitorDetailPage(segmentData: {
               <Badge variant="outline">unknown</Badge>
             )}
           </div>
-          <MonitorActions monitorId={monitor.id} active={monitor.active} compact />
+          <div className="w-full sm:w-auto">
+            <MonitorActions monitorId={monitor.id} active={monitor.active} compact />
+          </div>
         </div>
-        <p className="text-zinc-400">
+        <p className="text-sm text-zinc-400 sm:text-base">
           Uptime {uptimePercent}% in the last 24 hours. Average latency{" "}
           {Math.round(Number(stats?.avgLatency ?? 0))} ms.
         </p>

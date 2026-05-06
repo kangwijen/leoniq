@@ -35,10 +35,10 @@ export const MonitorChart = ({ title, data, mode = "latency" }: MonitorChartProp
   return (
     <Card className="border-zinc-800 bg-zinc-950/80 text-zinc-100">
       <CardHeader>
-        <CardTitle className="text-lg">{title}</CardTitle>
+        <CardTitle className="text-base sm:text-lg">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-72 w-full">
+        <div className="h-56 w-full sm:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />

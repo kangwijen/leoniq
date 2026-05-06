@@ -15,10 +15,10 @@ export default async function EditMonitorPage(segmentData: {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10 md:px-8">
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6 sm:gap-6 sm:py-8 md:px-8 md:py-10">
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold text-zinc-100">Edit Monitor</h1>
-        <p className="text-zinc-400">Update monitored target settings and intervals.</p>
+        <h1 className="text-2xl font-semibold text-zinc-100 sm:text-3xl">Edit Monitor</h1>
+        <p className="text-sm text-zinc-400 sm:text-base">Update monitored target settings and intervals.</p>
       </div>
       <MonitorEditForm
         monitor={{

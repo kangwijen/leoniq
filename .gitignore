@@ -44,3 +44,6 @@ next-env.d.ts
 .cursor
 .claude
 .vscode
+PRODUCT.md
+DESIGN.md
+DESIGN.json

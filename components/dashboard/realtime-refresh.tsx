@@ -22,12 +22,19 @@ export const RealtimeRefresh = () => {
   useEffect(() => {
     let websocket: WebSocket | null = null
     let timeoutId: ReturnType<typeof setTimeout> | null = null
+    let refreshTimeoutId: ReturnType<typeof setTimeout> | null = null
 
     const connect = () => {
       websocket = new WebSocket(getWsUrl())
 
       websocket.onmessage = () => {
-        router.refresh()
+        if (refreshTimeoutId) {
+          clearTimeout(refreshTimeoutId)
+        }
+
+        refreshTimeoutId = setTimeout(() => {
+          router.refresh()
+        }, 250)
       }
 
       websocket.onclose = () => {
@@ -40,6 +47,10 @@ export const RealtimeRefresh = () => {
     return () => {
       if (timeoutId) {
         clearTimeout(timeoutId)
+      }
+
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId)
       }
 
       if (websocket && websocket.readyState === websocket.OPEN) {

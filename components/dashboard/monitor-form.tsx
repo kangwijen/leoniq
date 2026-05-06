@@ -66,13 +66,13 @@ export const MonitorForm = () => {
   return (
     <Card className="border-zinc-800 bg-zinc-950/90 text-zinc-100 shadow-2xl">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">New Monitor</CardTitle>
+        <CardTitle className="text-xl font-semibold sm:text-2xl">New Monitor</CardTitle>
         <CardDescription className="text-zinc-400">
           Input what you want to monitor. Website checks use HTTP and socket checks use TCP.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="grid gap-4" onSubmit={submit}>
+        <form className="grid gap-4 sm:gap-5" onSubmit={submit}>
           <div className="grid gap-2">
             <Label htmlFor="name">Monitor name</Label>
             <Input
@@ -87,7 +87,7 @@ export const MonitorForm = () => {
           <div className="grid gap-2">
             <Label>Monitor type</Label>
             <Select value={type} onValueChange={value => setType(value as MonitorType)}>
-              <SelectTrigger className="cursor-pointer">
+              <SelectTrigger className="h-11 cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -106,6 +106,7 @@ export const MonitorForm = () => {
                 onChange={event => setUrl(event.target.value)}
                 placeholder="https://api.example.com/health"
                 required
+                className="h-11"
               />
             </div>
           ) : (
@@ -118,6 +119,7 @@ export const MonitorForm = () => {
                   onChange={event => setHost(event.target.value)}
                   placeholder="example.com"
                   required
+                  className="h-11"
                 />
               </div>
               <div className="grid gap-2">
@@ -128,6 +130,7 @@ export const MonitorForm = () => {
                   onChange={event => setPort(event.target.value)}
                   placeholder="443"
                   required
+                  className="h-11"
                 />
               </div>
             </>
@@ -141,6 +144,7 @@ export const MonitorForm = () => {
                 value={intervalSeconds}
                 onChange={event => setIntervalSeconds(event.target.value)}
                 required
+                className="h-11"
               />
             </div>
             <div className="grid gap-2">
@@ -150,6 +154,7 @@ export const MonitorForm = () => {
                 value={timeoutMs}
                 onChange={event => setTimeoutMs(event.target.value)}
                 required
+                className="h-11"
               />
             </div>
           </div>

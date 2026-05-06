@@ -21,32 +21,32 @@ export default async function DashboardPage() {
   const seriesByMonitorId = new Map(monitorSeries.map(item => [item.monitorId, item.series]))
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 md:px-8">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:gap-6 sm:py-8 md:px-8 md:py-10">
       <RealtimeRefresh />
-      <header className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900/70 p-6 shadow-2xl">
+      <header className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900/70 p-5 shadow-2xl sm:p-6">
         <div className="absolute -top-16 -right-16 size-56 rounded-full bg-emerald-500/10 blur-3xl" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Operations</p>
-            <h1 className="text-3xl font-semibold text-zinc-100 sm:text-4xl">
+            <h1 className="text-2xl font-semibold text-zinc-100 sm:text-4xl">
               Monitoring Dashboard
             </h1>
-            <p className="max-w-2xl text-zinc-400">
+            <p className="max-w-2xl text-sm text-zinc-400 sm:text-base">
               Live status, uptime, and latency across all website and socket monitors.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1 text-xs text-zinc-300">
-              Signed in as {session.user.email}
+            <div className="max-w-full truncate rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1 text-xs text-zinc-300">
+              Signed in as {session.user.name}
             </div>
           </div>
         </div>
       </header>
 
-      <div className="flex flex-wrap justify-end">
+      <div className="flex flex-wrap justify-stretch sm:justify-end">
         <Button
           asChild
-          className="cursor-pointer bg-emerald-500 text-black transition-colors duration-200 hover:bg-emerald-400"
+          className="h-11 w-full cursor-pointer bg-emerald-500 text-black transition-colors duration-200 hover:bg-emerald-400 sm:h-10 sm:w-auto"
         >
           <Link href="/dashboard/monitors/new">Add monitor</Link>
         </Button>
