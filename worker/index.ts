@@ -1,8 +1,8 @@
 import "dotenv/config"
-import { eq, lte } from "drizzle-orm"
+import { and, desc, eq, lte } from "drizzle-orm"
 import { WebSocketServer } from "ws"
 import { db } from "../lib/db/client"
-import { checkResults, monitors } from "../lib/db/schema"
+import { checkResults, monitors, user } from "../lib/db/schema"
 import { runHttpCheck } from "../lib/monitor/http-check"
 import type { CheckResult } from "../lib/monitor/http-check"
 import { runTcpCheck } from "../lib/monitor/tcp-check"
@@ -10,6 +10,8 @@ import { runTcpCheck } from "../lib/monitor/tcp-check"
 const WORKER_POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL_MS ?? 10000)
 const MAX_RETENTION_DAYS = Number(process.env.MONITOR_RETENTION_DAYS ?? 30)
 const WS_PORT = Number(process.env.WS_PORT ?? 4001)
+const WEBHOOK_SUMMARY_INTERVAL_MS = Number(process.env.WEBHOOK_SUMMARY_INTERVAL_MS ?? 300000)
+const WEBHOOK_TIMEOUT_MS = Number(process.env.WEBHOOK_TIMEOUT_MS ?? 10000)
 
 const wss = new WebSocketServer({ port: WS_PORT })
 
@@ -117,14 +119,88 @@ const cleanupOldResults = async () => {
   await db.delete(checkResults).where(lte(checkResults.checkedAt, cutoff))
 }
 
+const sendWebhookSummaries = async () => {
+  const webhookUsers = await db.select().from(user)
+  const targetUsers = webhookUsers.filter(item => item.webhookUrl && item.webhookUrl.trim().length > 0)
+
+  for (const item of targetUsers) {
+    const allMonitors = await db.select().from(monitors).where(eq(monitors.userId, item.id))
+    const services = allMonitors.map(monitor => ({
+      id: monitor.id,
+      name: monitor.name,
+      type: monitor.type,
+      active: monitor.active,
+      status: monitor.lastStatus ?? "unknown",
+      errorMessage: null as string | null,
+      lastCheckedAt: monitor.lastCheckedAt ? monitor.lastCheckedAt.toISOString() : null,
+    }))
+
+    const downMonitorIds = allMonitors.filter(monitor => monitor.lastStatus === "down").map(monitor => monitor.id)
+    if (downMonitorIds.length === 0) {
+      continue
+    }
+
+    for (const monitorId of downMonitorIds) {
+      const lastDownResult = await db
+        .select()
+        .from(checkResults)
+        .where(and(eq(checkResults.monitorId, monitorId), eq(checkResults.status, "down")))
+        .orderBy(desc(checkResults.checkedAt))
+        .limit(1)
+      const errorMessage = lastDownResult[0]?.errorMessage ?? null
+      const service = services.find(entry => entry.id === monitorId)
+      if (service) {
+        service.errorMessage = errorMessage
+      }
+    }
+
+    const downServices = services.filter(entry => entry.status === "down")
+    const payload = {
+      type: "monitor.summary.down_only",
+      userId: item.id,
+      checkedAt: new Date().toISOString(),
+      overall: {
+        total: services.length,
+        up: services.filter(entry => entry.status === "up").length,
+        down: downServices.length,
+      },
+      services,
+      downServices,
+    }
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS)
+    try {
+      await fetch(item.webhookUrl as string, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      })
+    } catch (error) {
+      console.error(`[worker] webhook send failed for user ${item.id}`, error)
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
+}
+
 const main = async () => {
   console.log(`[worker] started poll every ${WORKER_POLL_INTERVAL_MS}ms`)
   console.log(`[worker] websocket on :${WS_PORT}`)
+  console.log(`[worker] webhook summary every ${WEBHOOK_SUMMARY_INTERVAL_MS}ms`)
+  let lastWebhookSummaryAt = 0
 
   while (true) {
     try {
       await runChecks()
       await cleanupOldResults()
+      if (Date.now() - lastWebhookSummaryAt >= WEBHOOK_SUMMARY_INTERVAL_MS) {
+        await sendWebhookSummaries()
+        lastWebhookSummaryAt = Date.now()
+      }
     } catch (error) {
       console.error("[worker] cycle failed", error)
     }

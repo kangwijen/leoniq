@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button"
 import { RealtimeRefresh } from "@/components/dashboard/realtime-refresh"
 import { DashboardKpis } from "@/components/dashboard/dashboard-kpis"
 import { MonitorTable } from "@/components/dashboard/monitor-table"
+import { WebhookSettings } from "@/components/dashboard/webhook-settings"
+import { userRepository } from "@/lib/user/repository"
 
 export default async function DashboardPage() {
   const session = await requireSession()
+  const user = await userRepository.getById(session.user.id)
   const monitors = await monitorRepository.list({ userId: session.user.id })
   const monitorSeries = await Promise.all(
     monitors.map(async monitor => {
@@ -58,6 +61,8 @@ export default async function DashboardPage() {
           lastStatus: (item.lastStatus as "up" | "down" | null) ?? null,
         }))}
       />
+
+      <WebhookSettings initialWebhookUrl={user?.webhookUrl ?? null} />
 
       {monitors.length === 0 ? (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-8 text-zinc-300">
