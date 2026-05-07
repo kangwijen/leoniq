@@ -118,4 +118,26 @@ describe("MonitorTable", () => {
     expect(screen.getAllByText("external").length).toBe(1)
     expect(screen.queryByText("overflow")).toBeNull()
   })
+
+  it("renders monitors without tags cleanly", () => {
+    render(
+      <MonitorTable
+        monitors={[
+          {
+            id: "3",
+            name: "No tags monitor",
+            type: "tcp",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 45,
+            lastCheckedAt: null,
+            uptimeSeries: [1, 0, 1],
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getAllByRole("link", { name: "No tags monitor" }).length).toBeGreaterThan(0)
+    expect(screen.queryByText("prod")).toBeNull()
+  })
 })

@@ -102,4 +102,261 @@ describe("DashboardLiveSections query persistence", () => {
     expect(mockReplace).toHaveBeenCalled()
     expect(mockReplace).toHaveBeenLastCalledWith("/dashboard", { scroll: false })
   })
+
+  it("normalizes invalid tag query and shows empty filter state", () => {
+    mockSearchValue = "type=tcp&tag=ghost"
+
+    render(
+      <DashboardLiveSections
+        samples={[]}
+        monitors={[
+          {
+            id: "m1",
+            name: "API",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: new Date().toISOString(),
+            uptimeSeries: [1, 1],
+            tags: ["prod"],
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText("Showing 0 of 1 monitors")).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it("resets filters when reset button is pressed", () => {
+    render(
+      <DashboardLiveSections
+        samples={[]}
+        monitors={[
+          {
+            id: "m1",
+            name: "API",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: new Date().toISOString(),
+            uptimeSeries: [1, 1],
+            tags: ["prod"],
+          },
+        ]}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }))
+    expect(mockReplace).toHaveBeenLastCalledWith("/dashboard", { scroll: false })
+  })
+
+  it("defaults filters when query params are missing", () => {
+    mockSearchValue = ""
+
+    render(
+      <DashboardLiveSections
+        samples={[]}
+        monitors={[
+          {
+            id: "m2",
+            name: "Socket",
+            type: "tcp",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1],
+          },
+        ]}
+      />
+    )
+
+    const selects = screen.getAllByRole("combobox")
+    expect(selects[0]).toHaveValue("all")
+    expect(selects[1]).toHaveValue("all")
+    expect(screen.getByText("Showing 1 of 1 monitors")).toBeInTheDocument()
+  })
+
+  it("handles tag filtering when monitor has no tags array", () => {
+    mockSearchValue = "type=http&tag=prod"
+
+    render(
+      <DashboardLiveSections
+        samples={[]}
+        monitors={[
+          {
+            id: "m3",
+            name: "HTTP monitor",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1, 1],
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByTestId("monitor-table")).toHaveAttribute("data-count", "1")
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it("evaluates tag matching when some monitors omit tags", () => {
+    mockSearchValue = "tag=prod"
+
+    render(
+      <DashboardLiveSections
+        samples={[]}
+        monitors={[
+          {
+            id: "m9",
+            name: "Tagged",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1],
+            tags: ["prod"],
+          },
+          {
+            id: "m10",
+            name: "Untagged",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1],
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText("Showing 1 of 2 monitors")).toBeInTheDocument()
+    expect(screen.getByTestId("monitor-table")).toHaveAttribute("data-count", "1")
+  })
+
+  it("writes type query when selecting a concrete type", () => {
+    mockSearchValue = ""
+
+    render(
+      <DashboardLiveSections
+        samples={[]}
+        monitors={[
+          {
+            id: "m4",
+            name: "HTTP monitor",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1],
+            tags: ["prod"],
+          },
+        ]}
+      />
+    )
+
+    const selects = screen.getAllByRole("combobox")
+    fireEvent.change(selects[0], { target: { value: "http" } })
+    expect(mockReplace).toHaveBeenCalledWith("/dashboard?type=http", { scroll: false })
+  })
+
+  it("does not rewrite url when selecting same filter values", () => {
+    mockSearchValue = "type=http&tag=prod"
+
+    render(
+      <DashboardLiveSections
+        samples={[]}
+        monitors={[
+          {
+            id: "m5",
+            name: "HTTP monitor",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1],
+            tags: ["prod"],
+          },
+        ]}
+      />
+    )
+
+    const callsBefore = mockReplace.mock.calls.length
+    const selects = screen.getAllByRole("combobox")
+    fireEvent.change(selects[0], { target: { value: "http" } })
+    fireEvent.change(selects[1], { target: { value: "prod" } })
+    expect(mockReplace.mock.calls.length).toBe(callsBefore)
+  })
+
+  it("filters out monitors when selected tag does not match specific monitor", () => {
+    mockSearchValue = "tag=backend"
+
+    render(
+      <DashboardLiveSections
+        samples={[]}
+        monitors={[
+          {
+            id: "m6",
+            name: "Backend API",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1],
+            tags: ["backend"],
+          },
+          {
+            id: "m7",
+            name: "Frontend API",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1],
+            tags: ["frontend"],
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText("Showing 1 of 2 monitors")).toBeInTheDocument()
+    expect(screen.getByTestId("monitor-table")).toHaveAttribute("data-count", "1")
+  })
+
+  it("filters out monitors when selected type does not match", () => {
+    mockSearchValue = "type=tcp"
+
+    render(
+      <DashboardLiveSections
+        samples={[]}
+        monitors={[
+          {
+            id: "m8",
+            name: "HTTP only",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1],
+            tags: ["backend"],
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText("Showing 0 of 1 monitors")).toBeInTheDocument()
+    expect(screen.getByText("No monitors match the current filters. Try another type or tag.")).toBeInTheDocument()
+  })
 })

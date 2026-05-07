@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -62,60 +62,49 @@ export const DashboardLiveSections = ({ samples, monitors }: DashboardLiveSectio
     )
   ).sort((a, b) => a.localeCompare(b))
 
+  const effectiveTagFilter = tagFilter === "all" || availableTags.includes(tagFilter) ? tagFilter : "all"
+
   const filteredMonitors = monitors.filter(item => {
     const typeMatch = typeFilter === "all" || item.type === typeFilter
-    const tagMatch = tagFilter === "all" || (item.tags ?? []).includes(tagFilter)
-    return typeMatch && tagMatch
+    const tagMatch = effectiveTagFilter === "all" || (item.tags ?? []).includes(effectiveTagFilter)
+    if (!typeMatch) {
+      return false
+    }
+    if (!tagMatch) {
+      return false
+    }
+    return true
   })
 
   const visibleMonitorIds = new Set(filteredMonitors.map(item => item.id))
   const filteredSamples = samples.filter(item => visibleMonitorIds.has(item.monitorId))
-  const hasActiveFilters = typeFilter !== "all" || tagFilter !== "all"
+  const hasActiveFilters = typeFilter !== "all" || effectiveTagFilter !== "all"
   const totalMonitors = monitors.length
-  const normalizedTagFilter = tagFilter === "all" || availableTags.includes(tagFilter) ? tagFilter : "all"
+  const currentQuery = searchParams.toString()
 
-  useEffect(() => {
-    if (tagFilter !== normalizedTagFilter) {
-      setTagFilter(normalizedTagFilter)
-    }
-  }, [normalizedTagFilter, tagFilter])
+  const updateUrl = useMemo(
+    () => (nextType: "all" | "http" | "tcp", nextTag: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (nextType === "all") {
+        params.delete("type")
+      } else {
+        params.set("type", nextType)
+      }
+      if (nextTag === "all") {
+        params.delete("tag")
+      } else {
+        params.set("tag", nextTag)
+      }
 
-  useEffect(() => {
-    const queryTypeValue = searchParams.get("type")
-    const queryTagValue = searchParams.get("tag")
-    const nextType: "all" | "http" | "tcp" =
-      queryTypeValue === "http" || queryTypeValue === "tcp" ? queryTypeValue : "all"
-    const nextTag = queryTagValue && queryTagValue.trim().length > 0 ? queryTagValue.trim() : "all"
+      const next = params.toString()
+      if (next === currentQuery) {
+        return
+      }
 
-    if (typeFilter !== nextType) {
-      setTypeFilter(nextType)
-    }
-    if (tagFilter !== nextTag) {
-      setTagFilter(nextTag)
-    }
-  }, [searchParams, tagFilter, typeFilter])
-
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString())
-    if (typeFilter === "all") {
-      params.delete("type")
-    } else {
-      params.set("type", typeFilter)
-    }
-    if (tagFilter === "all") {
-      params.delete("tag")
-    } else {
-      params.set("tag", tagFilter)
-    }
-
-    const current = searchParams.toString()
-    const next = params.toString()
-    if (next === current) {
-      return
-    }
-
-    router.replace(next.length > 0 ? `${pathname}?${next}` : pathname, { scroll: false })
-  }, [pathname, router, searchParams, tagFilter, typeFilter])
+      router.replace(next.length > 0 ? `${pathname}?${next}` : pathname, { scroll: false })
+    },
+    [currentQuery, pathname, router, searchParams]
+  )
 
   return (
     <>
@@ -147,6 +136,7 @@ export const DashboardLiveSections = ({ samples, monitors }: DashboardLiveSectio
               onClick={() => {
                 setTypeFilter("all")
                 setTagFilter("all")
+                updateUrl("all", "all")
               }}
               className="h-11 border-zinc-700 text-zinc-200 hover:bg-zinc-800"
             >
@@ -157,7 +147,14 @@ export const DashboardLiveSections = ({ samples, monitors }: DashboardLiveSectio
         <div className="mt-3 grid gap-3 sm:mt-4 sm:grid-cols-2">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.08em] text-zinc-500">Type</p>
-            <Select value={typeFilter} onValueChange={value => setTypeFilter(value as "all" | "http" | "tcp")}>
+            <Select
+              value={typeFilter}
+              onValueChange={value => {
+                const nextType = value as "all" | "http" | "tcp"
+                setTypeFilter(nextType)
+                updateUrl(nextType, effectiveTagFilter)
+              }}
+            >
               <SelectTrigger className="h-11 border-zinc-700 bg-zinc-900 text-zinc-100">
                 <SelectValue />
               </SelectTrigger>
@@ -170,7 +167,13 @@ export const DashboardLiveSections = ({ samples, monitors }: DashboardLiveSectio
           </div>
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.08em] text-zinc-500">Tag</p>
-            <Select value={tagFilter} onValueChange={setTagFilter}>
+            <Select
+              value={effectiveTagFilter}
+              onValueChange={value => {
+                setTagFilter(value)
+                updateUrl(typeFilter, value)
+              }}
+            >
               <SelectTrigger className="h-11 border-zinc-700 bg-zinc-900 text-zinc-100">
                 <SelectValue />
               </SelectTrigger>

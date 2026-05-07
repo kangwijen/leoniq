@@ -229,4 +229,35 @@ describe("NeonOperationsWall", () => {
     render(<NeonOperationsWall samples={samples} />)
     expect(screen.getByText("No response size samples yet")).toBeInTheDocument()
   })
+
+  it("accepts numeric response byte strings", () => {
+    const now = Date.now()
+    const samples: Sample[] = [
+      {
+        monitorId: "http-string-number",
+        monitorName: "HTTP monitor",
+        monitorType: "http",
+        checkedAt: new Date(now - 10 * 60 * 1000).toISOString(),
+        status: "up",
+        latencyMs: 100,
+        statusCode: 200,
+        errorMessage: null,
+        meta: {
+          responseBytes: "512",
+        },
+      },
+    ]
+
+    render(<NeonOperationsWall samples={samples} />)
+    expect(screen.queryByText("No response size samples yet")).toBeNull()
+  })
+
+  it("uses controlled range and emits onRangeChange", () => {
+    const onRangeChange = jest.fn()
+    render(<NeonOperationsWall samples={[]} range="6h" onRangeChange={onRangeChange} />)
+    const rangeSelect = screen.getByLabelText("Time range")
+    expect(rangeSelect).toHaveValue("6h")
+    fireEvent.change(rangeSelect, { target: { value: "1h" } })
+    expect(onRangeChange).toHaveBeenCalledWith("1h")
+  })
 })

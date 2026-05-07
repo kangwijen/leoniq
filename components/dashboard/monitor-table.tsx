@@ -44,7 +44,10 @@ const toRangeSeries = (values: number[], intervalSeconds: number, range: RangeOp
 export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => (
   <div className="space-y-3">
     <div className="space-y-3 md:hidden">
-      {monitors.map(monitor => (
+      {monitors.map(monitor => {
+        const tags = monitor.tags ?? []
+
+        return (
         <article
           key={monitor.id}
           className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 shadow-[0_0_0_1px_rgba(24,24,27,0.7)]"
@@ -58,9 +61,9 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
                 {monitor.name}
               </Link>
               <p className="text-xs uppercase tracking-[0.08em] text-zinc-500">{monitor.type}</p>
-              {(monitor.tags ?? []).length > 0 ? (
+              {tags.length > 0 ? (
                 <div className="flex flex-wrap gap-1 pt-1">
-                  {(monitor.tags ?? []).slice(0, 4).map(tag => (
+                  {tags.slice(0, 4).map(tag => (
                     <Badge key={`${monitor.id}-${tag}`} variant="outline" className="border-zinc-700 text-zinc-300">
                       {tag}
                     </Badge>
@@ -108,7 +111,7 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
             <MonitorActions monitorId={monitor.id} active={monitor.active} compact />
           </div>
         </article>
-      ))}
+      )})}
     </div>
 
     <div className="hidden overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/70 shadow-[0_0_0_1px_rgba(24,24,27,0.7)] md:block">
@@ -125,7 +128,10 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {monitors.map(monitor => (
+          {monitors.map(monitor => {
+            const tags = monitor.tags ?? []
+
+            return (
             <TableRow
               key={monitor.id}
               className="border-zinc-800/80 transition-colors duration-200 hover:bg-zinc-900/80"
@@ -140,9 +146,9 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
                 <p className="mt-0.5 text-xs text-zinc-500">
                   {monitor.type === "http" ? "Website monitor" : "Socket monitor"}
                 </p>
-                {(monitor.tags ?? []).length > 0 ? (
+                {tags.length > 0 ? (
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {(monitor.tags ?? []).slice(0, 3).map(tag => (
+                    {tags.slice(0, 3).map(tag => (
                       <Badge key={`${monitor.id}-table-${tag}`} variant="outline" className="border-zinc-700 text-zinc-300">
                         {tag}
                       </Badge>
@@ -185,7 +191,7 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
                 </div>
               </TableCell>
             </TableRow>
-          ))}
+          )})}
         </TableBody>
       </Table>
     </div>
