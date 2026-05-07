@@ -13,6 +13,19 @@ const getMonitorId = async (
   }
 ) => (await segmentData.params).id
 
+const parseTags = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return undefined
+  }
+
+  const cleaned = value
+    .filter(item => typeof item === "string")
+    .map(item => item.trim().toLowerCase())
+    .filter(item => item.length > 0)
+
+  return Array.from(new Set(cleaned)).slice(0, 20)
+}
+
 export async function GET(
   _request: Request,
   segmentData: {
@@ -63,6 +76,7 @@ export async function PATCH(
       : existing.intervalSeconds
   const nextTimeoutMs =
     typeof body.timeoutMs === "number" ? body.timeoutMs : existing.timeoutMs
+  const nextTags = parseTags(body.tags)
 
   const timingValidation = validateMonitorTiming(nextIntervalSeconds, nextTimeoutMs)
 
@@ -106,6 +120,7 @@ export async function PATCH(
     timeoutMs: nextTimeoutMs,
     retries:
       typeof body.retries === "number" ? body.retries : existing.retries,
+    tags: nextTags,
   })
 
   if (!monitor) {

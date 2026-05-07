@@ -227,15 +227,15 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
   const latestP95 = Math.round(bucketed[bucketed.length - 1].p95)
 
   return (
-    <section className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 shadow-[0_0_0_1px_rgba(24,24,27,0.8)] sm:p-5">
+    <section className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3 shadow-[0_0_0_1px_rgba(24,24,27,0.8)] sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.14em] text-emerald-300/80">Operations Trends</p>
           <h2 className="mt-1 text-xl font-semibold text-zinc-100 sm:text-2xl">Health and latency trends</h2>
         </div>
-        <div className="w-full sm:w-44">
+        <div className="w-full sm:w-48">
           <Select value={range} onValueChange={value => setRange(value as RangeOption)}>
-            <SelectTrigger className="cursor-pointer border-zinc-700 bg-zinc-900 text-zinc-100">
+            <SelectTrigger className="h-10 cursor-pointer border-zinc-700 bg-zinc-900 text-zinc-100">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -271,7 +271,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
         <CardHeader>
           <CardTitle className="text-zinc-100">Latency Percentiles</CardTitle>
         </CardHeader>
-        <CardContent className="h-72">
+        <CardContent className="h-64 sm:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={bucketed}>
               <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
@@ -293,7 +293,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
           <CardHeader>
             <CardTitle className="text-zinc-100">Uptime Timeline</CardTitle>
           </CardHeader>
-          <CardContent className="h-64">
+          <CardContent className="h-56 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={bucketed}>
                 <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
@@ -317,7 +317,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
           <CardHeader>
             <CardTitle className="text-zinc-100">Status Code Distribution</CardTitle>
           </CardHeader>
-          <CardContent className="h-64">
+          <CardContent className="h-56 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={statusCodeData}>
                 <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
@@ -338,7 +338,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
           <CardHeader>
             <CardTitle className="text-zinc-100">Response Size Trend</CardTitle>
           </CardHeader>
-          <CardContent className="h-56">
+          <CardContent className="h-52 sm:h-56">
             {responseBytesTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={responseBytesTrend}>
@@ -368,7 +368,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
           <CardHeader>
             <CardTitle className="text-zinc-100">P95 by Protocol</CardTitle>
           </CardHeader>
-          <CardContent className="h-56">
+          <CardContent className="h-52 sm:h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={protocolLatencySplit}>
                 <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
@@ -392,7 +392,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
           <CardHeader>
             <CardTitle className="text-zinc-100">Top Failure Reasons</CardTitle>
           </CardHeader>
-          <CardContent className="h-56">
+          <CardContent className="h-52 sm:h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topFailureReasons} layout="vertical" margin={{ left: 12, right: 12 }}>
                 <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />

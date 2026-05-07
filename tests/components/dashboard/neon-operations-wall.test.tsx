@@ -207,4 +207,26 @@ describe("NeonOperationsWall", () => {
     render(<NeonOperationsWall samples={samples} />)
     expect(screen.getByText("No response size samples yet")).toBeInTheDocument()
   })
+
+  it("drops non numeric response byte strings from trend data", () => {
+    const now = Date.now()
+    const samples: Sample[] = [
+      {
+        monitorId: "http-string-bytes",
+        monitorName: "HTTP monitor",
+        monitorType: "http",
+        checkedAt: new Date(now - 10 * 60 * 1000).toISOString(),
+        status: "up",
+        latencyMs: 100,
+        statusCode: 200,
+        errorMessage: null,
+        meta: {
+          responseBytes: "not-a-number",
+        },
+      },
+    ]
+
+    render(<NeonOperationsWall samples={samples} />)
+    expect(screen.getByText("No response size samples yet")).toBeInTheDocument()
+  })
 })

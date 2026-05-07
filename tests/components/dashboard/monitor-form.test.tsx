@@ -207,6 +207,7 @@ describe("MonitorForm", () => {
     fireEvent.change(screen.getByLabelText("URL to check"), { target: { value: "https://edge.example.com" } })
     fireEvent.change(screen.getByLabelText("Interval seconds"), { target: { value: "120" } })
     fireEvent.change(screen.getByLabelText("Timeout ms"), { target: { value: "7000" } })
+    fireEvent.change(screen.getByLabelText("Tags"), { target: { value: "prod, api" } })
     fireEvent.submit(screen.getByRole("button", { name: "Create monitor" }).closest("form") as HTMLFormElement)
 
     await waitFor(() => {

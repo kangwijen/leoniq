@@ -92,4 +92,30 @@ describe("MonitorTable", () => {
 
     expect(screen.getAllByText("points:30").length).toBeGreaterThan(0)
   })
+
+  it("renders tag badges in mobile and table layouts", () => {
+    render(
+      <MonitorTable
+        monitors={[
+          {
+            id: "1",
+            name: "Tagged monitor",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1, 1, 1],
+            tags: ["prod", "api", "priority", "external", "overflow"],
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getAllByText("prod").length).toBe(2)
+    expect(screen.getAllByText("api").length).toBe(2)
+    expect(screen.getAllByText("priority").length).toBe(2)
+    expect(screen.getAllByText("external").length).toBe(1)
+    expect(screen.queryByText("overflow")).toBeNull()
+  })
 })

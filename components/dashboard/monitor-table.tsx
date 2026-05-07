@@ -21,6 +21,7 @@ type Monitor = {
   intervalSeconds: number
   lastCheckedAt: string | Date | null
   uptimeSeries: number[]
+  tags?: string[]
 }
 
 type MonitorTableProps = {
@@ -57,6 +58,15 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
                 {monitor.name}
               </Link>
               <p className="text-xs uppercase tracking-[0.08em] text-zinc-500">{monitor.type}</p>
+              {(monitor.tags ?? []).length > 0 ? (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {(monitor.tags ?? []).slice(0, 4).map(tag => (
+                    <Badge key={`${monitor.id}-${tag}`} variant="outline" className="border-zinc-700 text-zinc-300">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
             </div>
             {!monitor.active ? (
               <Badge variant="outline" className="border-zinc-700 text-zinc-300">
@@ -76,13 +86,13 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div>
               <p className="text-xs text-zinc-500">Interval</p>
-              <p className="text-zinc-200">{monitor.intervalSeconds}s</p>
+              <p className="font-medium text-zinc-200">{monitor.intervalSeconds}s</p>
             </div>
             <div>
               <p className="text-xs text-zinc-500">Last Check</p>
               <p className="truncate text-zinc-300">
                 {monitor.lastCheckedAt
-                  ? new Date(monitor.lastCheckedAt).toLocaleTimeString()
+                  ? new Date(monitor.lastCheckedAt).toLocaleString()
                   : "No checks yet"}
               </p>
             </div>
@@ -94,7 +104,7 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-900/40 p-2">
             <MonitorActions monitorId={monitor.id} active={monitor.active} compact />
           </div>
         </article>
@@ -130,6 +140,15 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
                 <p className="mt-0.5 text-xs text-zinc-500">
                   {monitor.type === "http" ? "Website monitor" : "Socket monitor"}
                 </p>
+                {(monitor.tags ?? []).length > 0 ? (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {(monitor.tags ?? []).slice(0, 3).map(tag => (
+                      <Badge key={`${monitor.id}-table-${tag}`} variant="outline" className="border-zinc-700 text-zinc-300">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
               </TableCell>
               <TableCell className="uppercase text-zinc-300">{monitor.type}</TableCell>
               <TableCell>

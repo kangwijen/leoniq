@@ -28,6 +28,7 @@ type MonitorEditFormProps = {
     intervalSeconds: number
     timeoutMs: number
     active: boolean
+    tags?: string[]
   }
 }
 
@@ -42,6 +43,7 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
   const [intervalSeconds, setIntervalSeconds] = useState(String(monitor.intervalSeconds))
   const [timeoutMs, setTimeoutMs] = useState(String(monitor.timeoutMs))
   const [active, setActive] = useState(monitor.active ? "active" : "paused")
+  const [tags, setTags] = useState((monitor.tags ?? []).join(", "))
 
   const readErrorMessage = async (response: Response, fallback: string) => {
     try {
@@ -72,6 +74,10 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
         intervalSeconds: Number(intervalSeconds),
         timeoutMs: Number(timeoutMs),
         active: active === "active",
+        tags: tags
+          .split(",")
+          .map(item => item.trim())
+          .filter(item => item.length > 0),
       }
 
       const response = await fetch(`/api/monitors/${monitor.id}`, {
@@ -213,6 +219,18 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
                 <SelectItem value="paused">Paused</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="tags">Tags</Label>
+            <Input
+              id="tags"
+              value={tags}
+              onChange={event => setTags(event.target.value)}
+              placeholder="prod, api, payments"
+              maxLength={240}
+              className="h-11"
+            />
           </div>
 
           <Button

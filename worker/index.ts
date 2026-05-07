@@ -1,15 +1,27 @@
 import "dotenv/config"
-import { and, desc, eq, lte } from "drizzle-orm"
+import { and, desc, eq, gte, lte } from "drizzle-orm"
 import { WebSocketServer } from "ws"
 import { db } from "../lib/db/client"
 import { checkResults, monitors, user, webhookAttempts } from "../lib/db/schema"
 import { executeAndPersistMonitorCheck } from "../lib/monitor/executor"
+import {
+  DEFAULT_SEVERITY_POLICIES,
+  dedupKeyForAlert,
+  severityFromDownStreak,
+  shouldSuppressForCooldown,
+  type AlertSeverity,
+} from "../lib/alerts/notification-policy"
 
 const WORKER_POLL_INTERVAL_MS = Number(process.env.WORKER_POLL_INTERVAL_MS ?? 10000)
 const MAX_RETENTION_DAYS = Number(process.env.MONITOR_RETENTION_DAYS ?? 30)
 const WS_PORT = Number(process.env.WS_PORT ?? 4001)
 const WEBHOOK_SUMMARY_INTERVAL_MS = Number(process.env.WEBHOOK_SUMMARY_INTERVAL_MS ?? 300000)
 const WEBHOOK_TIMEOUT_MS = Number(process.env.WEBHOOK_TIMEOUT_MS ?? 10000)
+const MAX_POLICY_COOLDOWN_MS = Math.max(
+  DEFAULT_SEVERITY_POLICIES.info.cooldownMs,
+  DEFAULT_SEVERITY_POLICIES.warning.cooldownMs,
+  DEFAULT_SEVERITY_POLICIES.critical.cooldownMs
+)
 
 const wss = new WebSocketServer({ port: WS_PORT })
 
@@ -65,64 +77,156 @@ const isDiscordWebhookUrl = (value: string) => {
   }
 }
 
+type DownAlert = {
+  id: string
+  name: string
+  type: "http" | "tcp"
+  errorMessage: string | null
+  lastCheckedAt: string | null
+  downStreak: number
+  severity: AlertSeverity
+  dedupKey: string
+}
+
+const getDownStreakAndError = async (monitorId: string) => {
+  const recent = await db
+    .select()
+    .from(checkResults)
+    .where(eq(checkResults.monitorId, monitorId))
+    .orderBy(desc(checkResults.checkedAt))
+    .limit(20)
+
+  let downStreak = 0
+  let errorMessage: string | null = null
+  for (const row of recent) {
+    if (row.status !== "down") {
+      break
+    }
+    downStreak += 1
+    if (!errorMessage && row.errorMessage) {
+      errorMessage = row.errorMessage
+    }
+  }
+
+  return {
+    downStreak,
+    errorMessage,
+  }
+}
+
 const sendWebhookSummaries = async () => {
   const webhookUsers = await db.select().from(user)
   const targetUsers = webhookUsers.filter(item => item.webhookUrl && item.webhookUrl.trim().length > 0)
 
   for (const item of targetUsers) {
     const allMonitors = await db.select().from(monitors).where(eq(monitors.userId, item.id))
+    const downMonitors = allMonitors.filter(monitor => monitor.lastStatus === "down")
+    if (downMonitors.length === 0) {
+      continue
+    }
+
+    const recentAttempts = await db
+      .select({
+        createdAt: webhookAttempts.createdAt,
+        payload: webhookAttempts.payload,
+      })
+      .from(webhookAttempts)
+      .where(
+        and(
+          eq(webhookAttempts.userId, item.id),
+          eq(webhookAttempts.success, true),
+          gte(webhookAttempts.createdAt, new Date(Date.now() - MAX_POLICY_COOLDOWN_MS))
+        )
+      )
+      .orderBy(desc(webhookAttempts.createdAt))
+      .limit(200)
+
+    const attemptRecords = recentAttempts
+      .map(attempt => {
+        const payload =
+          attempt.payload && typeof attempt.payload === "object"
+            ? (attempt.payload as { alerts?: Array<{ dedupKey?: unknown }> })
+            : null
+        const dedupKey = payload?.alerts?.[0]?.dedupKey
+        return {
+          createdAt: attempt.createdAt,
+          dedupKey: typeof dedupKey === "string" ? dedupKey : null,
+        }
+      })
+      .filter(record => record.dedupKey !== null)
+
+    const downAlerts: DownAlert[] = []
+    for (const monitor of downMonitors) {
+      const detail = await getDownStreakAndError(monitor.id)
+      const severity = severityFromDownStreak(Math.max(1, detail.downStreak))
+      const dedupKey = dedupKeyForAlert({
+        monitorId: monitor.id,
+        errorMessage: detail.errorMessage,
+        downStreak: Math.max(1, detail.downStreak),
+        severity,
+      })
+      downAlerts.push({
+        id: monitor.id,
+        name: monitor.name,
+        type: monitor.type,
+        errorMessage: detail.errorMessage,
+        lastCheckedAt: monitor.lastCheckedAt ? monitor.lastCheckedAt.toISOString() : null,
+        downStreak: Math.max(1, detail.downStreak),
+        severity,
+        dedupKey,
+      })
+    }
+
+    const alertsToSend = downAlerts.filter(alert => {
+      return !shouldSuppressForCooldown(
+        {
+          monitorId: alert.id,
+          errorMessage: alert.errorMessage,
+          downStreak: alert.downStreak,
+          severity: alert.severity,
+        },
+        attemptRecords,
+        new Date(),
+        DEFAULT_SEVERITY_POLICIES
+      )
+    })
+
+    if (alertsToSend.length === 0) {
+      continue
+    }
+
     const services = allMonitors.map(monitor => ({
       id: monitor.id,
       name: monitor.name,
       type: monitor.type,
       active: monitor.active,
       status: monitor.lastStatus ?? "unknown",
-      errorMessage: null as string | null,
       lastCheckedAt: monitor.lastCheckedAt ? monitor.lastCheckedAt.toISOString() : null,
     }))
 
-    const downMonitorIds = allMonitors.filter(monitor => monitor.lastStatus === "down").map(monitor => monitor.id)
-    if (downMonitorIds.length === 0) {
-      continue
-    }
-
-    for (const monitorId of downMonitorIds) {
-      const lastDownResult = await db
-        .select()
-        .from(checkResults)
-        .where(and(eq(checkResults.monitorId, monitorId), eq(checkResults.status, "down")))
-        .orderBy(desc(checkResults.checkedAt))
-        .limit(1)
-      const errorMessage = lastDownResult[0]?.errorMessage ?? null
-      const service = services.find(entry => entry.id === monitorId)
-      if (service) {
-        service.errorMessage = errorMessage
-      }
-    }
-
-    const downServices = services.filter(entry => entry.status === "down")
     const payload = {
-      type: "monitor.summary.down_only",
+      type: "monitor.alerts.v2",
       userId: item.id,
       checkedAt: new Date().toISOString(),
+      policy: DEFAULT_SEVERITY_POLICIES,
       overall: {
         total: services.length,
         up: services.filter(entry => entry.status === "up").length,
-        down: downServices.length,
+        down: downAlerts.length,
       },
-      services,
-      downServices,
+      alerts: alertsToSend,
+      suppressedCount: downAlerts.length - alertsToSend.length,
     }
     const discordPayload = {
-      content: `Monitor alert: ${downServices.length} service(s) down`,
+      content: `Monitor alert: ${alertsToSend.length} service(s) need attention`,
       embeds: [
         {
-          title: "Monitoring Summary",
-          description: `Total: ${payload.overall.total} | Up: ${payload.overall.up} | Down: ${payload.overall.down}`,
+          title: "Monitoring Alerts",
+          description: `Total: ${payload.overall.total} | Up: ${payload.overall.up} | Down: ${payload.overall.down} | Sent: ${alertsToSend.length}`,
           color: 15158332,
-          fields: downServices.map(service => ({
-            name: `${service.name} (${service.type.toUpperCase()})`,
-            value: service.errorMessage ?? "No error details",
+          fields: alertsToSend.map(alert => ({
+            name: `[${alert.severity.toUpperCase()}] ${alert.name} (${alert.type.toUpperCase()})`,
+            value: `${alert.errorMessage ?? "No error details"}\nDown streak: ${alert.downStreak}`,
             inline: false,
           })),
           timestamp: payload.checkedAt,
@@ -139,7 +243,7 @@ const sendWebhookSummaries = async () => {
     let statusCode: number | null = null
     let errorMessage: string | null = null
     console.log(
-      `[worker] webhook attempt user=${item.id} url=${item.webhookUrl} down=${downServices.length}`
+      `[worker] webhook attempt user=${item.id} url=${item.webhookUrl} send=${alertsToSend.length} suppressed=${payload.suppressedCount}`
     )
     try {
       const requestBody = isDiscordWebhookUrl(item.webhookUrl as string) ? discordPayload : payload

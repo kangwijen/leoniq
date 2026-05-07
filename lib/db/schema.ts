@@ -114,6 +114,10 @@ export const monitors = pgTable(
     intervalSeconds: integer("interval_seconds").default(60).notNull(),
     timeoutMs: integer("timeout_ms").default(5000).notNull(),
     retries: integer("retries").default(1).notNull(),
+    tags: text("tags")
+      .array()
+      .default(sql`'{}'::text[]`)
+      .notNull(),
     active: boolean("active").default(true).notNull(),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
     lastStatus: monitorStatusEnum("last_status"),

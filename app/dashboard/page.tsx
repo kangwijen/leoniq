@@ -26,10 +26,10 @@ export default async function DashboardPage() {
   const seriesByMonitorId = new Map(monitorSeries.map(item => [item.monitorId, item.series]))
 
   return (
-    <main className="min-h-screen w-full bg-zinc-950 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+    <main className="min-h-screen w-full bg-zinc-950 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
       <RealtimeRefresh />
-      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-5">
-      <header className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900/80 p-5 shadow-2xl sm:p-6">
+      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4 sm:gap-5">
+      <header className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900/80 p-4 shadow-2xl sm:p-6">
         <div className="absolute -top-16 -right-16 size-56 rounded-full bg-cyan-500/10 blur-3xl" />
         <div className="absolute -bottom-24 -left-20 size-64 rounded-full bg-amber-500/10 blur-3xl" />
         <div className="relative flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -42,14 +42,14 @@ export default async function DashboardPage() {
               Live status, latency, and failure trends for every monitor in this workspace.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 xl:justify-end">
-            <div className="max-w-full truncate rounded-full border border-zinc-700 bg-zinc-900/90 px-3 py-1 text-xs text-zinc-300">
+          <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[auto_auto] xl:flex xl:items-center xl:justify-end xl:gap-3">
+            <div className="max-w-full truncate rounded-lg border border-zinc-700 bg-zinc-900/90 px-3 py-2 text-xs text-zinc-300 sm:rounded-full sm:py-1">
               Account: {session.user.name}
             </div>
             <WebhookSettings initialWebhookUrl={user?.webhookUrl ?? null} />
             <Button
               asChild
-              className="h-10 cursor-pointer bg-emerald-500 text-black transition-colors duration-200 hover:bg-emerald-400"
+              className="h-10 w-full cursor-pointer bg-emerald-500 text-black transition-colors duration-200 hover:bg-emerald-400 sm:w-auto"
             >
               <Link href="/dashboard/monitors/new">Add monitor</Link>
             </Button>
@@ -80,6 +80,7 @@ export default async function DashboardPage() {
           type: item.type as "http" | "tcp",
           lastStatus: (item.lastStatus as "up" | "down" | null) ?? null,
           uptimeSeries: seriesByMonitorId.get(item.id) as number[],
+          tags: item.tags ?? [],
         }))}
       />
       </div>

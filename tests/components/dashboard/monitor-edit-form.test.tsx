@@ -207,6 +207,7 @@ describe("MonitorEditForm", () => {
     render(<MonitorEditForm monitor={monitor} />)
     fireEvent.change(screen.getByLabelText("Interval seconds"), { target: { value: "90" } })
     fireEvent.change(screen.getByLabelText("Timeout ms"), { target: { value: "6000" } })
+    fireEvent.change(screen.getByLabelText("Tags"), { target: { value: "prod, backend" } })
     fireEvent.submit(screen.getByRole("button", { name: "Save changes" }).closest("form") as HTMLFormElement)
 
     await waitFor(() => {

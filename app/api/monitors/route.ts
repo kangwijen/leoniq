@@ -16,6 +16,19 @@ const parseBody = async (request: Request) => {
   }
 }
 
+const parseTags = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const cleaned = value
+    .filter(item => typeof item === "string")
+    .map(item => item.trim().toLowerCase())
+    .filter(item => item.length > 0)
+
+  return Array.from(new Set(cleaned)).slice(0, 20)
+}
+
 export async function GET() {
   const session = await requireSession()
   const items = await monitorRepository.list({ userId: session.user.id })
@@ -39,6 +52,7 @@ export async function POST(request: Request) {
   const intervalSeconds = Number(body.intervalSeconds)
   const timeoutMs = Number(body.timeoutMs)
   const retries = Number(body.retries ?? 1)
+  const tags = parseTags(body.tags)
 
   if (!name || !type) {
     return NextResponse.json(
@@ -82,6 +96,7 @@ export async function POST(request: Request) {
     intervalSeconds,
     timeoutMs,
     retries: Number.isInteger(retries) ? retries : 1,
+    tags,
   })
 
   try {

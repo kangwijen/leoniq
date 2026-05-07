@@ -19,6 +19,7 @@ type CreateMonitorInput = {
   intervalSeconds?: number
   timeoutMs?: number
   retries?: number
+  tags?: string[]
 }
 
 export const monitorRepository = {
@@ -55,6 +56,7 @@ export const monitorRepository = {
         intervalSeconds: input.intervalSeconds ?? 60,
         timeoutMs: input.timeoutMs ?? 5000,
         retries: input.retries ?? 1,
+        tags: input.tags ?? [],
       })
       .returning()
 

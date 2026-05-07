@@ -27,6 +27,7 @@ export const MonitorForm = () => {
   const [port, setPort] = useState("443")
   const [intervalSeconds, setIntervalSeconds] = useState("60")
   const [timeoutMs, setTimeoutMs] = useState("5000")
+  const [tags, setTags] = useState("")
 
   const readErrorMessage = async (response: Response, fallback: string) => {
     try {
@@ -56,6 +57,10 @@ export const MonitorForm = () => {
         port: type === "tcp" ? Number(port) : undefined,
         intervalSeconds: Number(intervalSeconds),
         timeoutMs: Number(timeoutMs),
+        tags: tags
+          .split(",")
+          .map(item => item.trim())
+          .filter(item => item.length > 0),
       }
 
       const response = await fetch("/api/monitors", {
@@ -188,6 +193,18 @@ export const MonitorForm = () => {
                 className="h-11"
               />
             </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="tags">Tags</Label>
+            <Input
+              id="tags"
+              value={tags}
+              onChange={event => setTags(event.target.value)}
+              placeholder="prod, api, payments"
+              maxLength={240}
+              className="h-11"
+            />
           </div>
 
           <Button
