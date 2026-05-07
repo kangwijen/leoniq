@@ -69,7 +69,7 @@ export const executeAndPersistMonitorCheck = async (
     latencyMs: result.latencyMs,
     statusCode: result.statusCode ?? null,
     errorMessage: result.errorMessage ?? null,
-    meta: null,
+    meta: result.meta ?? null,
   })
 
   await db

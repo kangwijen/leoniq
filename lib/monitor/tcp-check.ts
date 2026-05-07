@@ -1,4 +1,5 @@
 import net from "node:net"
+import dns from "node:dns/promises"
 import { validateTcpTarget } from "./validation"
 import type { CheckResult } from "./http-check"
 
@@ -24,6 +25,8 @@ export const runTcpCheck = (input: TcpCheckInput) =>
     const startedAt = Date.now()
     const socket = new net.Socket()
     let resolved = false
+    let dnsLookupMs: number | null = null
+    const connectStartedAt = Date.now()
 
     const done = (result: CheckResult) => {
       if (resolved) return
@@ -38,6 +41,11 @@ export const runTcpCheck = (input: TcpCheckInput) =>
       done({
         status: "up",
         latencyMs: Date.now() - startedAt,
+        meta: {
+          protocol: "tcp",
+          dnsLookupMs,
+          connectMs: Date.now() - connectStartedAt,
+        },
       })
     })
 
@@ -46,6 +54,11 @@ export const runTcpCheck = (input: TcpCheckInput) =>
         status: "down",
         latencyMs: Date.now() - startedAt,
         errorMessage: "Socket timeout",
+        meta: {
+          protocol: "tcp",
+          dnsLookupMs,
+          connectMs: Date.now() - connectStartedAt,
+        },
       })
     })
 
@@ -54,8 +67,22 @@ export const runTcpCheck = (input: TcpCheckInput) =>
         status: "down",
         latencyMs: Date.now() - startedAt,
         errorMessage: error.message,
+        meta: {
+          protocol: "tcp",
+          dnsLookupMs,
+          connectMs: Date.now() - connectStartedAt,
+        },
       })
     })
 
-    socket.connect(input.port, input.host)
+    void (async () => {
+      const dnsStart = Date.now()
+      try {
+        await dns.lookup(input.host)
+        dnsLookupMs = Date.now() - dnsStart
+      } catch {
+        dnsLookupMs = Date.now() - dnsStart
+      }
+      socket.connect(input.port, input.host)
+    })()
   })

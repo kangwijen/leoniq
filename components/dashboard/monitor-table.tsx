@@ -88,7 +88,7 @@ export const MonitorTable = ({ monitors }: MonitorTableProps) => (
     <div className="hidden overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/70 shadow-[0_0_0_1px_rgba(24,24,27,0.7)] md:block">
       <Table>
         <TableHeader>
-          <TableRow className="border-zinc-800/80 bg-zinc-900/40 hover:bg-zinc-900/40">
+          <TableRow className="border-zinc-800/80 bg-zinc-900/60 hover:bg-zinc-900/60">
             <TableHead className="text-zinc-300">Name</TableHead>
             <TableHead className="text-zinc-300">Type</TableHead>
             <TableHead className="text-zinc-300">Status</TableHead>
@@ -102,7 +102,7 @@ export const MonitorTable = ({ monitors }: MonitorTableProps) => (
           {monitors.map(monitor => (
             <TableRow
               key={monitor.id}
-              className="border-zinc-800/80 transition-colors duration-200 hover:bg-zinc-900/60"
+              className="border-zinc-800/80 transition-colors duration-200 hover:bg-zinc-900/80"
             >
               <TableCell>
                 <Link

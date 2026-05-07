@@ -13,6 +13,7 @@ export type CheckResult = {
   latencyMs: number
   statusCode?: number
   errorMessage?: string
+  meta?: Record<string, unknown>
 }
 
 export const runHttpCheck = async (input: HttpCheckInput): Promise<CheckResult> => {
@@ -40,6 +41,10 @@ export const runHttpCheck = async (input: HttpCheckInput): Promise<CheckResult> 
 
     clearTimeout(timeout)
     const latencyMs = Date.now() - startedAt
+    const contentLengthHeader = response.headers.get("content-length")
+    const responseBytes = contentLengthHeader ? Number(contentLengthHeader) : null
+    const serverHeader = response.headers.get("server")
+    const cacheHeader = response.headers.get("cache-control")
     const isUp =
       response.status >= input.expectedStatusMin &&
       response.status <= input.expectedStatusMax
@@ -49,6 +54,14 @@ export const runHttpCheck = async (input: HttpCheckInput): Promise<CheckResult> 
       latencyMs,
       statusCode: response.status,
       errorMessage: isUp ? undefined : `Unexpected status ${response.status}`,
+      meta: {
+        protocol: "http",
+        method: input.method,
+        responseBytes: Number.isFinite(responseBytes) ? responseBytes : null,
+        serverHeader,
+        cacheHeader,
+        ok: response.ok,
+      },
     }
   } catch (error) {
     const latencyMs = Date.now() - startedAt
@@ -58,6 +71,10 @@ export const runHttpCheck = async (input: HttpCheckInput): Promise<CheckResult> 
       status: "down",
       latencyMs,
       errorMessage: message,
+      meta: {
+        protocol: "http",
+        method: input.method,
+      },
     }
   }
 }

@@ -123,6 +123,25 @@ export const checkResultsRepository = {
       .limit(limit)
   },
 
+  listByUserSince: async (userId: string, from: Date, limit = 6000) =>
+    db
+      .select({
+        monitorId: checkResults.monitorId,
+        monitorName: monitors.name,
+        monitorType: monitors.type,
+        checkedAt: checkResults.checkedAt,
+        status: checkResults.status,
+        latencyMs: checkResults.latencyMs,
+        statusCode: checkResults.statusCode,
+        errorMessage: checkResults.errorMessage,
+        meta: checkResults.meta,
+      })
+      .from(checkResults)
+      .innerJoin(monitors, eq(checkResults.monitorId, monitors.id))
+      .where(and(eq(monitors.userId, userId), gte(checkResults.checkedAt, from)))
+      .orderBy(asc(checkResults.checkedAt))
+      .limit(limit),
+
   statsByMonitor: async (monitorId: string) => {
     const rows = await db
       .select({
