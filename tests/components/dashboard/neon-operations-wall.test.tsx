@@ -260,4 +260,16 @@ describe("NeonOperationsWall", () => {
     fireEvent.change(rangeSelect, { target: { value: "1h" } })
     expect(onRangeChange).toHaveBeenCalledWith("1h")
   })
+
+  it("renders injected filter panel content", () => {
+    render(
+      <NeonOperationsWall
+        samples={[]}
+        filterPanel={<div data-testid="injected-filter-panel">Custom filter panel</div>}
+      />
+    )
+
+    expect(screen.getByTestId("injected-filter-panel")).toBeInTheDocument()
+    expect(screen.getByText("Custom filter panel")).toBeInTheDocument()
+  })
 })

@@ -30,6 +30,10 @@ jest.mock("@/components/dashboard/uptime-sparkline", () => ({
   UptimeSparkline: ({ values }: { values: number[] }) => <div>points:{values.length}</div>,
 }))
 
+jest.mock("@/components/dashboard/latency-sparkline", () => ({
+  LatencySparkline: ({ values }: { values: number[] }) => <div>latency-points:{values.length}</div>,
+}))
+
 const { MonitorTable } = require("@/components/dashboard/monitor-table")
 
 describe("MonitorTable", () => {
@@ -46,6 +50,7 @@ describe("MonitorTable", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1, 1, 0],
+            latencySeries: [120, 110, 180],
           },
           {
             id: "2",
@@ -56,6 +61,7 @@ describe("MonitorTable", () => {
             intervalSeconds: 120,
             lastCheckedAt: "2025-01-01T00:00:00.000Z",
             uptimeSeries: [1],
+            latencySeries: [90],
           },
         ]}
       />
@@ -67,6 +73,7 @@ describe("MonitorTable", () => {
     expect(screen.getAllByText("No checks yet").length).toBeGreaterThan(0)
     expect(screen.getAllByTestId("monitor-actions-1").length).toBeGreaterThan(0)
     expect(screen.getAllByTestId("monitor-actions-2").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("latency-points:3").length).toBeGreaterThan(0)
   })
 
   it("slices uptime sparkline values based on selected range", () => {
@@ -85,12 +92,14 @@ describe("MonitorTable", () => {
             intervalSeconds: 120,
             lastCheckedAt: null,
             uptimeSeries: longSeries,
+            latencySeries: longSeries.map((_, index) => index + 1),
           },
         ]}
       />
     )
 
     expect(screen.getAllByText("points:30").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("latency-points:30").length).toBeGreaterThan(0)
   })
 
   it("renders tag badges in mobile and table layouts", () => {
@@ -106,6 +115,7 @@ describe("MonitorTable", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1, 1, 1],
+            latencySeries: [100, 110, 120],
             tags: ["prod", "api", "priority", "external", "overflow"],
           },
         ]}
@@ -132,6 +142,7 @@ describe("MonitorTable", () => {
             intervalSeconds: 45,
             lastCheckedAt: null,
             uptimeSeries: [1, 0, 1],
+            latencySeries: [],
           },
         ]}
       />
@@ -139,5 +150,6 @@ describe("MonitorTable", () => {
 
     expect(screen.getAllByRole("link", { name: "No tags monitor" }).length).toBeGreaterThan(0)
     expect(screen.queryByText("prod")).toBeNull()
+    expect(screen.getAllByText("latency-points:0").length).toBeGreaterThan(0)
   })
 })

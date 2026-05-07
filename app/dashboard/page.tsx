@@ -20,39 +20,38 @@ export default async function DashboardPage() {
       return {
         monitorId: monitor.id,
         series: points.map(point => (point.status === "up" ? 1 : 0)),
+        latencySeries: points
+          .map(point => point.latencyMs)
+          .filter((value): value is number => typeof value === "number" && Number.isFinite(value)),
       }
     })
   )
   const seriesByMonitorId = new Map(monitorSeries.map(item => [item.monitorId, item.series]))
+  const latencySeriesByMonitorId = new Map(monitorSeries.map(item => [item.monitorId, item.latencySeries]))
 
   return (
     <main className="min-h-screen w-full bg-zinc-950 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
       <RealtimeRefresh />
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4 sm:gap-5">
-      <header className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900/80 p-4 shadow-2xl sm:p-6">
-        <div className="absolute -top-16 -right-16 size-56 rounded-full bg-cyan-500/10 blur-3xl" />
-        <div className="absolute -bottom-24 -left-20 size-64 rounded-full bg-amber-500/10 blur-3xl" />
-        <div className="relative flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Operations Center</p>
-            <h1 className="text-2xl font-semibold text-zinc-100 sm:text-3xl xl:text-4xl">
-              Monitoring Dashboard
-            </h1>
-            <p className="max-w-3xl text-sm text-zinc-400 sm:text-base">
-              Live status, latency, and failure trends for every monitor in this workspace.
-            </p>
+      <header className="rounded-2xl border border-zinc-800 bg-zinc-950/80 shadow-[0_0_0_1px_rgba(24,24,27,0.8)]">
+        <div className="flex flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Leoniq Monitor</p>
+            <h1 className="truncate text-xl font-semibold text-zinc-100 sm:text-2xl">Monitoring Dashboard</h1>
           </div>
-          <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[auto_auto] xl:flex xl:items-center xl:justify-end xl:gap-3">
-            <div className="max-w-full truncate rounded-lg border border-zinc-700 bg-zinc-900/90 px-3 py-2 text-xs text-zinc-300 sm:rounded-full sm:py-1">
+          <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[auto_auto] sm:items-center">
+            <div className="max-w-full truncate rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-300">
               Account: {session.user.name}
             </div>
-            <WebhookSettings initialWebhookUrl={user?.webhookUrl ?? null} />
-            <Button
-              asChild
-              className="h-10 w-full cursor-pointer bg-emerald-500 text-black transition-colors duration-200 hover:bg-emerald-400 sm:w-auto"
-            >
-              <Link href="/dashboard/monitors/new">Add monitor</Link>
-            </Button>
+            <div className="grid grid-cols-1 gap-2 sm:flex">
+              <WebhookSettings initialWebhookUrl={user?.webhookUrl ?? null} />
+              <Button
+                asChild
+                className="h-11 w-full cursor-pointer bg-emerald-500 text-black transition-colors duration-200 hover:bg-emerald-400 sm:h-10 sm:w-auto"
+              >
+                <Link href="/dashboard/monitors/new">Add monitor</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -80,6 +79,7 @@ export default async function DashboardPage() {
           type: item.type as "http" | "tcp",
           lastStatus: (item.lastStatus as "up" | "down" | null) ?? null,
           uptimeSeries: seriesByMonitorId.get(item.id) as number[],
+          latencySeries: latencySeriesByMonitorId.get(item.id) as number[],
           tags: item.tags ?? [],
         }))}
       />

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import type { ReactNode } from "react"
 import {
   Area,
   AreaChart,
@@ -39,6 +40,7 @@ type NeonOperationsWallProps = {
   samples: MonitorSample[]
   range?: RangeOption
   onRangeChange?: (value: RangeOption) => void
+  filterPanel?: ReactNode
 }
 
 export type RangeOption = "1h" | "6h" | "24h" | "7d"
@@ -68,7 +70,12 @@ const asTimeLabel = (timestamp: number, range: RangeOption) =>
     minute: "2-digit",
   })
 
-export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }: NeonOperationsWallProps) => {
+export const NeonOperationsWall = ({
+  samples,
+  range: rangeProp,
+  onRangeChange,
+  filterPanel,
+}: NeonOperationsWallProps) => {
   const [internalRange, setInternalRange] = useState<RangeOption>("24h")
   const range = rangeProp ?? internalRange
 
@@ -235,7 +242,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
         </div>
         <div className="w-full sm:w-48">
           <Select value={range} onValueChange={value => setRange(value as RangeOption)}>
-            <SelectTrigger className="h-10 cursor-pointer border-zinc-700 bg-zinc-900 text-zinc-100">
+            <SelectTrigger className="h-11 cursor-pointer border-zinc-700 bg-zinc-900 text-zinc-100 sm:h-10">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -247,6 +254,9 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
           </Select>
         </div>
       </div>
+      {filterPanel ? (
+        <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3">{filterPanel}</div>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
@@ -271,7 +281,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
         <CardHeader>
           <CardTitle className="text-zinc-100">Latency Percentiles</CardTitle>
         </CardHeader>
-        <CardContent className="h-64 sm:h-72">
+        <CardContent className="h-52 px-2 pb-3 sm:h-72 sm:px-6 sm:pb-6">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={bucketed}>
               <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
@@ -288,12 +298,12 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-3 sm:gap-4 xl:grid-cols-2">
         <Card className="border-zinc-800 bg-zinc-950/70">
           <CardHeader>
             <CardTitle className="text-zinc-100">Uptime Timeline</CardTitle>
           </CardHeader>
-          <CardContent className="h-56 sm:h-64">
+          <CardContent className="h-48 px-2 pb-3 sm:h-64 sm:px-6 sm:pb-6">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={bucketed}>
                 <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
@@ -317,7 +327,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
           <CardHeader>
             <CardTitle className="text-zinc-100">Status Code Distribution</CardTitle>
           </CardHeader>
-          <CardContent className="h-56 sm:h-64">
+          <CardContent className="h-48 px-2 pb-3 sm:h-64 sm:px-6 sm:pb-6">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={statusCodeData}>
                 <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
@@ -333,12 +343,12 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 xl:grid-cols-3">
         <Card className="border-zinc-800 bg-zinc-950/70">
           <CardHeader>
             <CardTitle className="text-zinc-100">Response Size Trend</CardTitle>
           </CardHeader>
-          <CardContent className="h-52 sm:h-56">
+          <CardContent className="h-44 px-2 pb-3 sm:h-56 sm:px-6 sm:pb-6">
             {responseBytesTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={responseBytesTrend}>
@@ -368,7 +378,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
           <CardHeader>
             <CardTitle className="text-zinc-100">P95 by Protocol</CardTitle>
           </CardHeader>
-          <CardContent className="h-52 sm:h-56">
+          <CardContent className="h-44 px-2 pb-3 sm:h-56 sm:px-6 sm:pb-6">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={protocolLatencySplit}>
                 <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
@@ -392,7 +402,7 @@ export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }:
           <CardHeader>
             <CardTitle className="text-zinc-100">Top Failure Reasons</CardTitle>
           </CardHeader>
-          <CardContent className="h-52 sm:h-56">
+          <CardContent className="h-44 px-2 pb-3 sm:h-56 sm:px-6 sm:pb-6">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topFailureReasons} layout="vertical" margin={{ left: 12, right: 12 }}>
                 <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />

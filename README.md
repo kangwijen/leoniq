@@ -5,8 +5,13 @@ Leoniq is a self hosted uptime monitoring app built with Next.js, Postgres, and 
 It provides:
 - HTTP and TCP monitor checks
 - Live status updates over WebSocket
-- Dashboard views for uptime and latency
+- Dashboard views for uptime, latency, response size, and failure trends
+- Time range controls for 1 hour, 6 hours, 24 hours, and 7 days
+- Monitor tags, filtered dashboard views, and shareable filter URLs
+- Incident timeline on monitor detail pages
+- Uptime and latency sparklines in monitor lists
 - Per user webhook configuration
+- Severity aware alert deduplication with cooldown policies
 - Down only summary webhook delivery
 
 ## Requirements
@@ -47,6 +52,24 @@ docker compose up -d --build
 ```
 
 Open `http://localhost:3000`.
+
+## Dashboard Highlights
+
+- Compact operations wall with range based trends for:
+  - latency percentiles
+  - uptime timeline
+  - status code distribution
+  - response size trend
+  - top failure reasons
+- Monitor list with:
+  - uptime sparkline
+  - latency sparkline
+  - current state badge
+  - tag badges
+- Filter controls:
+  - type filter for HTTP and TCP
+  - tag filter
+  - URL query persistence for refresh and sharing
 
 ## Local Development
 
@@ -93,7 +116,14 @@ npm run db:push
 
 ## Webhook Behavior
 
-Set a webhook URL from the dashboard via `Webhook settings`. Currently only support Discord webhook.
+Set a webhook URL from the dashboard via `Webhook settings`.
+
+Webhook delivery behavior:
+- Notification summaries are down only
+- Alerts are grouped by deduplication keys
+- Cooldown windows suppress repeated notifications
+- Severity levels are derived from down streak progression
+- Webhook summary payload includes policy context and suppressed counts
 
 ## Scripts
 

@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { MonitorActions } from "@/components/dashboard/monitor-actions"
+import { LatencySparkline } from "@/components/dashboard/latency-sparkline"
 import { UptimeSparkline } from "@/components/dashboard/uptime-sparkline"
 import type { RangeOption } from "@/components/dashboard/neon-operations-wall"
 import {
@@ -21,6 +22,7 @@ type Monitor = {
   intervalSeconds: number
   lastCheckedAt: string | Date | null
   uptimeSeries: number[]
+  latencySeries: number[]
   tags?: string[]
 }
 
@@ -86,14 +88,14 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
             )}
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+          <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <div>
               <p className="text-xs text-zinc-500">Interval</p>
               <p className="font-medium text-zinc-200">{monitor.intervalSeconds}s</p>
             </div>
             <div>
               <p className="text-xs text-zinc-500">Last Check</p>
-              <p className="truncate text-zinc-300">
+              <p className="text-zinc-300 sm:truncate">
                 {monitor.lastCheckedAt
                   ? new Date(monitor.lastCheckedAt).toLocaleString()
                   : "No checks yet"}
@@ -103,6 +105,12 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
               <p className="mb-1 text-xs text-zinc-500">Uptime</p>
               <UptimeSparkline
                 values={toRangeSeries(monitor.uptimeSeries, monitor.intervalSeconds, range)}
+              />
+            </div>
+            <div className="col-span-2">
+              <p className="mb-1 text-xs text-zinc-500">Latency</p>
+              <LatencySparkline
+                values={toRangeSeries(monitor.latencySeries, monitor.intervalSeconds, range)}
               />
             </div>
           </div>
@@ -123,6 +131,7 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
             <TableHead className="text-zinc-300">Status</TableHead>
             <TableHead className="text-zinc-300">Interval</TableHead>
             <TableHead className="text-zinc-300">Uptime</TableHead>
+            <TableHead className="text-zinc-300">Latency</TableHead>
             <TableHead className="text-zinc-300">Last Check</TableHead>
             <TableHead className="text-right text-zinc-300">Actions</TableHead>
           </TableRow>
@@ -177,6 +186,13 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
                 <div className="flex justify-start">
                   <UptimeSparkline
                     values={toRangeSeries(monitor.uptimeSeries, monitor.intervalSeconds, range)}
+                  />
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex justify-start">
+                  <LatencySparkline
+                    values={toRangeSeries(monitor.latencySeries, monitor.intervalSeconds, range)}
                   />
                 </div>
               </TableCell>

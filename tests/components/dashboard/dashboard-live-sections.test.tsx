@@ -39,8 +39,16 @@ jest.mock("@/components/ui/select", () => ({
 }))
 
 jest.mock("@/components/dashboard/neon-operations-wall", () => ({
-  NeonOperationsWall: ({ samples }: { samples: unknown[] }) => (
-    <div data-testid="operations-wall" data-count={samples.length} />
+  NeonOperationsWall: ({
+    samples,
+    filterPanel,
+  }: {
+    samples: unknown[]
+    filterPanel?: React.ReactNode
+  }) => (
+    <div data-testid="operations-wall" data-count={samples.length}>
+      {filterPanel}
+    </div>
   ),
 }))
 
@@ -86,6 +94,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: new Date().toISOString(),
             uptimeSeries: [1, 1],
+            latencySeries: [100, 110],
             tags: ["prod"],
           },
         ]}
@@ -119,6 +128,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: new Date().toISOString(),
             uptimeSeries: [1, 1],
+            latencySeries: [100, 110],
             tags: ["prod"],
           },
         ]}
@@ -143,6 +153,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: new Date().toISOString(),
             uptimeSeries: [1, 1],
+            latencySeries: [100, 110],
             tags: ["prod"],
           },
         ]}
@@ -169,6 +180,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1],
+            latencySeries: [90],
           },
         ]}
       />
@@ -196,6 +208,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1, 1],
+            latencySeries: [120, 130],
           },
         ]}
       />
@@ -221,6 +234,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1],
+            latencySeries: [80],
             tags: ["prod"],
           },
           {
@@ -232,6 +246,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1],
+            latencySeries: [80],
           },
         ]}
       />
@@ -257,6 +272,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1],
+            latencySeries: [80],
             tags: ["prod"],
           },
         ]}
@@ -284,6 +300,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1],
+            latencySeries: [70],
             tags: ["prod"],
           },
         ]}
@@ -313,6 +330,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1],
+            latencySeries: [70],
             tags: ["backend"],
           },
           {
@@ -324,6 +342,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1],
+            latencySeries: [75],
             tags: ["frontend"],
           },
         ]}
@@ -350,6 +369,7 @@ describe("DashboardLiveSections query persistence", () => {
             intervalSeconds: 60,
             lastCheckedAt: null,
             uptimeSeries: [1],
+            latencySeries: [88],
             tags: ["backend"],
           },
         ]}

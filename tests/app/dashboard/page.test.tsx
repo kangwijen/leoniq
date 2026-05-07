@@ -36,7 +36,7 @@ jest.mock("@/components/dashboard/dashboard-live-sections", () => ({
     monitors,
   }: {
     samples: unknown[]
-    monitors: Array<{ lastStatus: "up" | "down" | null; uptimeSeries: number[] }>
+    monitors: Array<{ lastStatus: "up" | "down" | null; uptimeSeries: number[]; latencySeries: number[] }>
   }) => (
     <div
       data-testid="dashboard-live-sections"
@@ -44,6 +44,7 @@ jest.mock("@/components/dashboard/dashboard-live-sections", () => ({
       data-monitors={monitors.length}
       data-null-status={String(monitors.some(item => item.lastStatus === null))}
       data-empty-series={String(monitors.some(item => item.uptimeSeries.length === 0))}
+      data-empty-latency={String(monitors.some(item => item.latencySeries.length === 0))}
     />
   ),
 }))
@@ -142,6 +143,7 @@ describe("DashboardPage orchestration", () => {
         intervalSeconds: 60,
         timeoutMs: 5000,
         retries: 1,
+        tags: ["prod", "api"],
         active: true,
         createdAt: new Date("2026-05-01T00:00:00.000Z"),
         updatedAt: new Date("2026-05-02T00:00:00.000Z"),
@@ -163,6 +165,7 @@ describe("DashboardPage orchestration", () => {
         intervalSeconds: 60,
         timeoutMs: 5000,
         retries: 1,
+        tags: undefined as unknown as string[],
         active: true,
         createdAt: new Date("2026-05-01T00:00:00.000Z"),
         updatedAt: new Date("2026-05-02T00:00:00.000Z"),
@@ -220,5 +223,6 @@ describe("DashboardPage orchestration", () => {
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-monitors", "2")
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-null-status", "true")
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-empty-series", "true")
+    expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-empty-latency", "true")
   })
 })

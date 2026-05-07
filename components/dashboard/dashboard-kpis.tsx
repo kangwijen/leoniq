@@ -52,7 +52,7 @@ export const DashboardKpis = ({ monitors }: DashboardKpisProps) => {
       {cards.map(card => (
         <article
           key={card.title}
-          className={`rounded-2xl border p-4 shadow-[0_0_0_1px_rgba(24,24,27,0.8)] transition-colors duration-200 hover:border-zinc-600 sm:p-5 ${card.tone}`}
+          className={`rounded-2xl border p-4 shadow-[0_0_0_1px_rgba(24,24,27,0.8)] transition-colors duration-200 sm:p-5 ${card.tone}`}
         >
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm text-zinc-200">{card.title}</p>

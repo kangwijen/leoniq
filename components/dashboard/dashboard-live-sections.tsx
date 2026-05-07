@@ -35,6 +35,7 @@ type Monitor = {
   intervalSeconds: number
   lastCheckedAt: string | Date | null
   uptimeSeries: number[]
+  latencySeries: number[]
   tags?: string[]
 }
 
@@ -108,88 +109,81 @@ export const DashboardLiveSections = ({ samples, monitors }: DashboardLiveSectio
 
   return (
     <>
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 sm:p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <div>
-              <p className="text-xs uppercase tracking-[0.08em] text-zinc-500">Filter Monitors</p>
-              <p className="text-sm text-zinc-300">
-                Showing {filteredMonitors.length} of {totalMonitors} monitors
-              </p>
+      <NeonOperationsWall
+        samples={filteredSamples}
+        range={range}
+        onRangeChange={setRange}
+        filterPanel={
+          <>
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <p className="text-xs uppercase tracking-[0.08em] text-zinc-400">Filter monitors</p>
+                <p className="text-sm whitespace-nowrap text-zinc-300">
+                  Showing {filteredMonitors.length} of {totalMonitors} monitors
+                </p>
+                {tagFilter !== "all" ? (
+                  <Badge className="bg-cyan-500/20 text-cyan-300">Tag {tagFilter}</Badge>
+                ) : null}
+                {typeFilter !== "all" ? (
+                  <Badge className="bg-emerald-500/20 text-emerald-300">Type {typeFilter.toUpperCase()}</Badge>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <Select
+                  value={typeFilter}
+                  onValueChange={value => {
+                    const nextType = value as "all" | "http" | "tcp"
+                    setTypeFilter(nextType)
+                    updateUrl(nextType, effectiveTagFilter)
+                  }}
+                >
+                  <SelectTrigger className="h-10 w-[130px] border-zinc-700 bg-zinc-900 text-zinc-100">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any type</SelectItem>
+                    <SelectItem value="http">HTTP</SelectItem>
+                    <SelectItem value="tcp">TCP</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={effectiveTagFilter}
+                  onValueChange={value => {
+                    setTagFilter(value)
+                    updateUrl(typeFilter, value)
+                  }}
+                >
+                  <SelectTrigger className="h-10 w-[130px] border-zinc-700 bg-zinc-900 text-zinc-100">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any tag</SelectItem>
+                    {availableTags.map(tag => (
+                      <SelectItem key={tag} value={tag}>
+                        {tag}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {hasActiveFilters ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setTypeFilter("all")
+                      setTagFilter("all")
+                      updateUrl("all", "all")
+                    }}
+                    className="h-10 border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                  >
+                    Reset filters
+                  </Button>
+                ) : null}
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="border-zinc-700 text-zinc-300">
-                Visible {filteredMonitors.length}
-              </Badge>
-              {tagFilter !== "all" ? (
-                <Badge className="bg-cyan-500/20 text-cyan-300">Tag {tagFilter}</Badge>
-              ) : null}
-              {typeFilter !== "all" ? (
-                <Badge className="bg-emerald-500/20 text-emerald-300">Type {typeFilter.toUpperCase()}</Badge>
-              ) : null}
-            </div>
-          </div>
-          {hasActiveFilters ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setTypeFilter("all")
-                setTagFilter("all")
-                updateUrl("all", "all")
-              }}
-              className="h-11 border-zinc-700 text-zinc-200 hover:bg-zinc-800"
-            >
-              Reset filters
-            </Button>
-          ) : null}
-        </div>
-        <div className="mt-3 grid gap-3 sm:mt-4 sm:grid-cols-2">
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.08em] text-zinc-500">Type</p>
-            <Select
-              value={typeFilter}
-              onValueChange={value => {
-                const nextType = value as "all" | "http" | "tcp"
-                setTypeFilter(nextType)
-                updateUrl(nextType, effectiveTagFilter)
-              }}
-            >
-              <SelectTrigger className="h-11 border-zinc-700 bg-zinc-900 text-zinc-100">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Any type</SelectItem>
-                <SelectItem value="http">HTTP</SelectItem>
-                <SelectItem value="tcp">TCP</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-[0.08em] text-zinc-500">Tag</p>
-            <Select
-              value={effectiveTagFilter}
-              onValueChange={value => {
-                setTagFilter(value)
-                updateUrl(typeFilter, value)
-              }}
-            >
-              <SelectTrigger className="h-11 border-zinc-700 bg-zinc-900 text-zinc-100">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Any tag</SelectItem>
-                {availableTags.map(tag => (
-                  <SelectItem key={tag} value={tag}>
-                    {tag}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </section>
-      <NeonOperationsWall samples={filteredSamples} range={range} onRangeChange={setRange} />
+          </>
+        }
+      />
       {filteredMonitors.length === 0 ? (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 text-zinc-300">
           No monitors match the current filters. Try another type or tag.
