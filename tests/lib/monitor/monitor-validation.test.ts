@@ -2,7 +2,7 @@ import {
   validateHttpUrl,
   validateMonitorTiming,
   validateTcpTarget,
-} from "../lib/monitor/validation"
+} from "@/lib/monitor/validation"
 
 describe("validateHttpUrl", () => {
   it("accepts public https url", () => {

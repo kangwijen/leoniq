@@ -1,4 +1,4 @@
-import { cn } from "../lib/utils"
+import { cn } from "@/lib/utils"
 
 describe("cn", () => {
   it("merges class values and removes falsy values", () => {

@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events"
 import net from "node:net"
-import { runTcpCheck } from "../lib/monitor/tcp-check"
+import dns from "node:dns/promises"
+import { runTcpCheck } from "@/lib/monitor/tcp-check"
 
 class MockSocket extends EventEmitter {
   destroy = jest.fn()
@@ -9,6 +10,7 @@ class MockSocket extends EventEmitter {
 }
 
 const socketFactory = net as unknown as { Socket: jest.Mock }
+const dnsLookup = dns.lookup as jest.Mock
 
 jest.mock("node:net", () => ({
   __esModule: true,
@@ -17,7 +19,20 @@ jest.mock("node:net", () => ({
   },
 }))
 
+jest.mock("node:dns/promises", () => ({
+  __esModule: true,
+  default: {
+    lookup: jest.fn(),
+  },
+}))
+
 describe("runTcpCheck", () => {
+  beforeEach(() => {
+    socketFactory.Socket.mockReset()
+    dnsLookup.mockReset()
+    dnsLookup.mockResolvedValue({ address: "93.184.216.34", family: 4 })
+  })
+
   it("returns validation error for invalid port", async () => {
     const result = await runTcpCheck({
       host: "example.com",
@@ -63,6 +78,9 @@ describe("runTcpCheck", () => {
     expect(result.errorMessage).toBeUndefined()
     expect(socket.connect).toHaveBeenCalledWith(443, "example.com")
     expect(socket.destroy).toHaveBeenCalledTimes(1)
+    expect(result.meta).toMatchObject({
+      protocol: "tcp",
+    })
   })
 
   it("returns down when socket errors", async () => {
@@ -83,6 +101,9 @@ describe("runTcpCheck", () => {
       errorMessage: "Connection refused",
     })
     expect(socket.destroy).toHaveBeenCalledTimes(1)
+    expect(result.meta).toMatchObject({
+      protocol: "tcp",
+    })
   })
 
   it("returns down when socket times out", async () => {
@@ -103,6 +124,9 @@ describe("runTcpCheck", () => {
       errorMessage: "Socket timeout",
     })
     expect(socket.destroy).toHaveBeenCalledTimes(1)
+    expect(result.meta).toMatchObject({
+      protocol: "tcp",
+    })
   })
 
   it("ignores later events after first resolution", async () => {
@@ -123,5 +147,26 @@ describe("runTcpCheck", () => {
 
     expect(result.status).toBe("up")
     expect(socket.destroy).toHaveBeenCalledTimes(1)
+  })
+
+  it("still connects when dns lookup fails", async () => {
+    dnsLookup.mockRejectedValue(new Error("dns failed"))
+    const socket = new MockSocket()
+    socket.connect.mockImplementation(() => {
+      setTimeout(() => socket.emit("connect"), 0)
+    })
+    socketFactory.Socket.mockImplementation(() => socket)
+
+    const result = await runTcpCheck({
+      host: "example.com",
+      port: 443,
+      timeoutMs: 500,
+    })
+
+    expect(result.status).toBe("up")
+    expect(socket.connect).toHaveBeenCalledWith(443, "example.com")
+    expect(result.meta).toMatchObject({
+      protocol: "tcp",
+    })
   })
 })
