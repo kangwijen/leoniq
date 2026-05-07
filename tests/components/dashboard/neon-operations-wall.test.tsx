@@ -102,7 +102,7 @@ describe("NeonOperationsWall", () => {
     expect(screen.getByText("2")).toBeInTheDocument()
   })
 
-  it("switches range between 6h and 7d from Select", () => {
+  it("switches range between 1h, 6h, and 7d from Select", () => {
     const now = Date.now()
     const samples = [
       makeSample(new Date(now - 2 * 60 * 60 * 1000).toISOString(), "up", 100),
@@ -119,6 +119,12 @@ describe("NeonOperationsWall", () => {
     fireEvent.change(rangeSelect, { target: { value: "6h" } })
     expect(rangeSelect).toHaveValue("6h")
     expect(screen.getByText("2")).toBeInTheDocument()
+
+    fireEvent.change(rangeSelect, { target: { value: "1h" } })
+    expect(rangeSelect).toHaveValue("1h")
+    const rangeChecksCard = screen.getByText("Checks in range").closest("article")
+    expect(rangeChecksCard).not.toBeNull()
+    expect(within(rangeChecksCard as HTMLElement).getByText("0")).toBeInTheDocument()
 
     fireEvent.change(rangeSelect, { target: { value: "7d" } })
     expect(rangeSelect).toHaveValue("7d")

@@ -35,15 +35,15 @@ export const DashboardKpis = ({ monitors }: DashboardKpisProps) => {
       title: "Monitors down",
       value: String(down),
       helper: "Active monitors currently failing",
-      icon: <TimerReset className="size-4 text-fuchsia-300" />,
-      tone: "border-fuchsia-500/30 bg-fuchsia-500/10",
+      icon: <TimerReset className="size-4 text-red-300" />,
+      tone: "border-red-500/30 bg-red-500/10",
     },
     {
       title: "Fleet uptime",
       value: `${uptime}%`,
       helper: "Computed from latest active checks",
-      icon: <Gauge className="size-4 text-violet-300" />,
-      tone: "border-violet-500/30 bg-violet-500/10",
+      icon: <Gauge className="size-4 text-sky-300" />,
+      tone: "border-sky-500/30 bg-sky-500/10",
     },
   ]
 

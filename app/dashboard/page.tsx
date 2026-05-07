@@ -4,10 +4,9 @@ import { requireSession } from "@/lib/session"
 import { Button } from "@/components/ui/button"
 import { RealtimeRefresh } from "@/components/dashboard/realtime-refresh"
 import { DashboardKpis } from "@/components/dashboard/dashboard-kpis"
-import { MonitorTable } from "@/components/dashboard/monitor-table"
 import { WebhookSettings } from "@/components/dashboard/webhook-settings"
 import { userRepository } from "@/lib/user/repository"
-import { NeonOperationsWall } from "@/components/dashboard/neon-operations-wall"
+import { DashboardLiveSections } from "@/components/dashboard/dashboard-live-sections"
 
 export default async function DashboardPage() {
   const session = await requireSession()
@@ -32,7 +31,7 @@ export default async function DashboardPage() {
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-5">
       <header className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900/80 p-5 shadow-2xl sm:p-6">
         <div className="absolute -top-16 -right-16 size-56 rounded-full bg-cyan-500/10 blur-3xl" />
-        <div className="absolute -bottom-24 -left-20 size-64 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute -bottom-24 -left-20 size-64 rounded-full bg-amber-500/10 blur-3xl" />
         <div className="relative flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Operations Center</p>
@@ -64,7 +63,7 @@ export default async function DashboardPage() {
           lastStatus: (item.lastStatus as "up" | "down" | null) ?? null,
         }))}
       />
-      <NeonOperationsWall
+      <DashboardLiveSections
         samples={operationSamples.map(sample => ({
           monitorId: sample.monitorId,
           monitorName: sample.monitorName,
@@ -76,22 +75,13 @@ export default async function DashboardPage() {
           errorMessage: sample.errorMessage,
           meta: sample.meta as Record<string, unknown> | null,
         }))}
+        monitors={monitors.map(item => ({
+          ...item,
+          type: item.type as "http" | "tcp",
+          lastStatus: (item.lastStatus as "up" | "down" | null) ?? null,
+          uptimeSeries: seriesByMonitorId.get(item.id) as number[],
+        }))}
       />
-
-      {monitors.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 text-zinc-300">
-          No monitors configured yet. Add an HTTP or TCP monitor to begin collecting checks.
-        </div>
-      ) : (
-        <MonitorTable
-          monitors={monitors.map(item => ({
-            ...item,
-            type: item.type as "http" | "tcp",
-            lastStatus: (item.lastStatus as "up" | "down" | null) ?? null,
-            uptimeSeries: seriesByMonitorId.get(item.id) ?? [],
-          }))}
-        />
-      )}
       </div>
     </main>
   )

@@ -68,4 +68,28 @@ describe("MonitorTable", () => {
     expect(screen.getAllByTestId("monitor-actions-1").length).toBeGreaterThan(0)
     expect(screen.getAllByTestId("monitor-actions-2").length).toBeGreaterThan(0)
   })
+
+  it("slices uptime sparkline values based on selected range", () => {
+    const longSeries = Array.from({ length: 120 }, () => 1)
+
+    render(
+      <MonitorTable
+        range="1h"
+        monitors={[
+          {
+            id: "1",
+            name: "Public API",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 120,
+            lastCheckedAt: null,
+            uptimeSeries: longSeries,
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getAllByText("points:30").length).toBeGreaterThan(0)
+  })
 })

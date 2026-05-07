@@ -42,7 +42,13 @@ export const runHttpCheck = async (input: HttpCheckInput): Promise<CheckResult> 
     clearTimeout(timeout)
     const latencyMs = Date.now() - startedAt
     const contentLengthHeader = response.headers.get("content-length")
-    const responseBytes = contentLengthHeader ? Number(contentLengthHeader) : null
+    const headerBytes = contentLengthHeader ? Number(contentLengthHeader) : null
+    const bodyBytes =
+      Number.isFinite(headerBytes) || typeof response.arrayBuffer !== "function"
+        ? null
+        : await response.arrayBuffer().then(buffer => buffer.byteLength).catch(() => null)
+    const responseBytes =
+      typeof headerBytes === "number" && Number.isFinite(headerBytes) ? headerBytes : bodyBytes
     const serverHeader = response.headers.get("server")
     const cacheHeader = response.headers.get("cache-control")
     const isUp =

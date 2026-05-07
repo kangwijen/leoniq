@@ -26,21 +26,22 @@ jest.mock("@/components/dashboard/dashboard-kpis", () => ({
   DashboardKpis: () => <div data-testid="dashboard-kpis" />,
 }))
 
-jest.mock("@/components/dashboard/neon-operations-wall", () => ({
-  NeonOperationsWall: ({ samples }: { samples: unknown[] }) => (
-    <div data-testid="neon-operations-wall" data-count={samples.length} />
-  ),
-}))
-
 jest.mock("@/components/dashboard/webhook-settings", () => ({
   WebhookSettings: () => <div data-testid="webhook-settings" />,
 }))
 
-jest.mock("@/components/dashboard/monitor-table", () => ({
-  MonitorTable: ({ monitors }: { monitors: Array<{ lastStatus: "up" | "down" | null; uptimeSeries: number[] }> }) => (
+jest.mock("@/components/dashboard/dashboard-live-sections", () => ({
+  DashboardLiveSections: ({
+    samples,
+    monitors,
+  }: {
+    samples: unknown[]
+    monitors: Array<{ lastStatus: "up" | "down" | null; uptimeSeries: number[] }>
+  }) => (
     <div
-      data-testid="monitor-table"
-      data-count={monitors.length}
+      data-testid="dashboard-live-sections"
+      data-samples={samples.length}
+      data-monitors={monitors.length}
       data-null-status={String(monitors.some(item => item.lastStatus === null))}
       data-empty-series={String(monitors.some(item => item.uptimeSeries.length === 0))}
     />
@@ -109,10 +110,8 @@ describe("DashboardPage orchestration", () => {
       new Date(now - 7 * 24 * 60 * 60 * 1000)
     )
     expect(mockListByMonitor).not.toHaveBeenCalled()
-    expect(
-      screen.getByText("No monitors configured yet. Add an HTTP or TCP monitor to begin collecting checks.")
-    ).toBeInTheDocument()
-    expect(screen.queryByTestId("monitor-table")).not.toBeInTheDocument()
+    expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-samples", "0")
+    expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-monitors", "0")
 
     nowSpy.mockRestore()
   })
@@ -217,12 +216,9 @@ describe("DashboardPage orchestration", () => {
     expect(mockListByUserSince).toHaveBeenCalledTimes(1)
     expect(mockListByMonitor).toHaveBeenNthCalledWith(1, "monitor-1", undefined, 20)
     expect(mockListByMonitor).toHaveBeenNthCalledWith(2, "monitor-2", undefined, 20)
-    expect(screen.getByTestId("neon-operations-wall")).toHaveAttribute("data-count", "1")
-    expect(screen.getByTestId("monitor-table")).toHaveAttribute("data-count", "2")
-    expect(screen.getByTestId("monitor-table")).toHaveAttribute("data-null-status", "true")
-    expect(screen.getByTestId("monitor-table")).toHaveAttribute("data-empty-series", "true")
-    expect(
-      screen.queryByText("No monitors configured yet. Add an HTTP or TCP monitor to begin collecting checks.")
-    ).not.toBeInTheDocument()
+    expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-samples", "1")
+    expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-monitors", "2")
+    expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-null-status", "true")
+    expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-empty-series", "true")
   })
 })

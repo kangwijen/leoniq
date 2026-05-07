@@ -37,11 +37,14 @@ type MonitorSample = {
 
 type NeonOperationsWallProps = {
   samples: MonitorSample[]
+  range?: RangeOption
+  onRangeChange?: (value: RangeOption) => void
 }
 
-type RangeOption = "6h" | "24h" | "7d"
+export type RangeOption = "1h" | "6h" | "24h" | "7d"
 
 const RANGE_MS: Record<RangeOption, number> = {
+  "1h": 1 * 60 * 60 * 1000,
   "6h": 6 * 60 * 60 * 1000,
   "24h": 24 * 60 * 60 * 1000,
   "7d": 7 * 24 * 60 * 60 * 1000,
@@ -65,8 +68,16 @@ const asTimeLabel = (timestamp: number, range: RangeOption) =>
     minute: "2-digit",
   })
 
-export const NeonOperationsWall = ({ samples }: NeonOperationsWallProps) => {
-  const [range, setRange] = useState<RangeOption>("24h")
+export const NeonOperationsWall = ({ samples, range: rangeProp, onRangeChange }: NeonOperationsWallProps) => {
+  const [internalRange, setInternalRange] = useState<RangeOption>("24h")
+  const range = rangeProp ?? internalRange
+
+  const setRange = (value: RangeOption) => {
+    if (rangeProp === undefined) {
+      setInternalRange(value)
+    }
+    onRangeChange?.(value)
+  }
 
   const filteredSamples = useMemo(() => {
     const rangeMs = RANGE_MS[range]
@@ -77,7 +88,7 @@ export const NeonOperationsWall = ({ samples }: NeonOperationsWallProps) => {
   }, [range, samples])
 
   const bucketed = useMemo(() => {
-    const bucketCount = range === "6h" ? 24 : range === "24h" ? 48 : 56
+    const bucketCount = range === "1h" ? 12 : range === "6h" ? 24 : range === "24h" ? 48 : 56
     const rangeMs = RANGE_MS[range]
     const now = Date.now()
     const start = now - rangeMs
@@ -134,12 +145,23 @@ export const NeonOperationsWall = ({ samples }: NeonOperationsWallProps) => {
   }, [filteredSamples])
 
   const responseBytesTrend = useMemo(() => {
+    const toBytes = (value: unknown) => {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return value
+      }
+      if (typeof value === "string" && value.trim() !== "") {
+        const parsed = Number(value)
+        return Number.isFinite(parsed) ? parsed : null
+      }
+      return null
+    }
+
     return filteredSamples
       .map(sample => {
-        const responseBytes = sample.meta?.responseBytes
+        const responseBytes = toBytes(sample.meta?.responseBytes)
         return {
           label: asTimeLabel(new Date(sample.checkedAt).getTime(), range),
-          bytes: typeof responseBytes === "number" ? responseBytes : null,
+          bytes: responseBytes,
         }
       })
       .filter(item => item.bytes !== null)
@@ -217,6 +239,7 @@ export const NeonOperationsWall = ({ samples }: NeonOperationsWallProps) => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="1h">Last 1 hour</SelectItem>
               <SelectItem value="6h">Last 6 hours</SelectItem>
               <SelectItem value="24h">Last 24 hours</SelectItem>
               <SelectItem value="7d">Last 7 days</SelectItem>
@@ -234,13 +257,13 @@ export const NeonOperationsWall = ({ samples }: NeonOperationsWallProps) => {
           <p className="text-xs text-cyan-200">Checks per minute</p>
           <p className="mt-1 text-2xl font-semibold text-cyan-100">{checksPerMinute}</p>
         </article>
-        <article className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3">
-          <p className="text-xs text-violet-200">Latest p95 latency</p>
+        <article className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+          <p className="text-xs text-amber-200">Latest p95 latency</p>
           <p className="mt-1 text-2xl font-semibold text-zinc-100">{latestP95} ms</p>
         </article>
-        <article className="rounded-xl border border-fuchsia-500/30 bg-fuchsia-500/10 p-3">
-          <p className="text-xs text-fuchsia-200">Failed checks</p>
-          <p className="mt-1 text-2xl font-semibold text-fuchsia-100">{incidentSignals}</p>
+        <article className="rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+          <p className="text-xs text-red-200">Failed checks</p>
+          <p className="mt-1 text-2xl font-semibold text-red-100">{incidentSignals}</p>
         </article>
       </div>
 
@@ -258,7 +281,7 @@ export const NeonOperationsWall = ({ samples }: NeonOperationsWallProps) => {
                 contentStyle={{ background: "#09090b", border: "1px solid #27272a", borderRadius: "0.75rem" }}
               />
               <Line type="monotone" dataKey="p50" stroke="#22d3ee" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="p95" stroke="#a855f7" strokeWidth={2.5} dot={false} />
+              <Line type="monotone" dataKey="p95" stroke="#f59e0b" strokeWidth={2.5} dot={false} />
               <Line type="monotone" dataKey="p99" stroke="#f97316" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -316,22 +339,28 @@ export const NeonOperationsWall = ({ samples }: NeonOperationsWallProps) => {
             <CardTitle className="text-zinc-100">Response Size Trend</CardTitle>
           </CardHeader>
           <CardContent className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={responseBytesTrend}>
-                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} minTickGap={24} />
-                <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                <Tooltip
-                  formatter={value => `${Number(value).toLocaleString()} bytes`}
-                  contentStyle={{
-                    background: "#09090b",
-                    border: "1px solid #27272a",
-                    borderRadius: "0.75rem",
-                  }}
-                />
-                <Area type="monotone" dataKey="bytes" stroke="#14b8a6" fill="#14b8a633" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
+            {responseBytesTrend.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={responseBytesTrend}>
+                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} minTickGap={24} />
+                  <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} />
+                  <Tooltip
+                    formatter={value => `${Number(value).toLocaleString()} bytes`}
+                    contentStyle={{
+                      background: "#09090b",
+                      border: "1px solid #27272a",
+                      borderRadius: "0.75rem",
+                    }}
+                  />
+                  <Area type="monotone" dataKey="bytes" stroke="#14b8a6" fill="#14b8a633" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-zinc-700 text-center text-sm text-zinc-400">
+                No response size samples yet
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -353,7 +382,7 @@ export const NeonOperationsWall = ({ samples }: NeonOperationsWallProps) => {
                     borderRadius: "0.75rem",
                   }}
                 />
-                <Bar dataKey="p95" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="p95" fill="#f59e0b" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

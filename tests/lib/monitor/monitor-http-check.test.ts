@@ -1,16 +1,22 @@
 import { runHttpCheck } from "@/lib/monitor/http-check"
 
-const makeResponse = (status: number, headers?: Record<string, string>, bodyBytes?: number) =>
-  ({
+const makeResponse = (status: number, headers?: Record<string, string>, bodyBytes?: number) => {
+  const response = {
     status,
     ok: status >= 200 && status <= 299,
     headers: {
       get: (name: string) => headers?.[name.toLowerCase()] ?? null,
     },
-    clone: () => ({
-      arrayBuffer: async () => new ArrayBuffer(bodyBytes ?? 0),
-    }),
-  }) as Response
+  } as Response & {
+    arrayBuffer?: () => Promise<ArrayBuffer>
+  }
+
+  if (typeof bodyBytes === "number") {
+    response.arrayBuffer = async () => new ArrayBuffer(bodyBytes)
+  }
+
+  return response
+}
 
 describe("runHttpCheck", () => {
   it("returns validation error for blocked private target", async () => {

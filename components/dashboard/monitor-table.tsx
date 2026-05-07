@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { MonitorActions } from "@/components/dashboard/monitor-actions"
 import { UptimeSparkline } from "@/components/dashboard/uptime-sparkline"
+import type { RangeOption } from "@/components/dashboard/neon-operations-wall"
 import {
   Table,
   TableBody,
@@ -24,9 +25,22 @@ type Monitor = {
 
 type MonitorTableProps = {
   monitors: Monitor[]
+  range?: RangeOption
 }
 
-export const MonitorTable = ({ monitors }: MonitorTableProps) => (
+const RANGE_SECONDS: Record<RangeOption, number> = {
+  "1h": 60 * 60,
+  "6h": 6 * 60 * 60,
+  "24h": 24 * 60 * 60,
+  "7d": 7 * 24 * 60 * 60,
+}
+
+const toRangeSeries = (values: number[], intervalSeconds: number, range: RangeOption) => {
+  const maxPoints = Math.max(1, Math.floor(RANGE_SECONDS[range] / Math.max(1, intervalSeconds)))
+  return values.slice(-maxPoints)
+}
+
+export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => (
   <div className="space-y-3">
     <div className="space-y-3 md:hidden">
       {monitors.map(monitor => (
@@ -74,7 +88,9 @@ export const MonitorTable = ({ monitors }: MonitorTableProps) => (
             </div>
             <div className="col-span-2">
               <p className="mb-1 text-xs text-zinc-500">Uptime</p>
-              <UptimeSparkline values={monitor.uptimeSeries} />
+              <UptimeSparkline
+                values={toRangeSeries(monitor.uptimeSeries, monitor.intervalSeconds, range)}
+              />
             </div>
           </div>
 
@@ -134,7 +150,9 @@ export const MonitorTable = ({ monitors }: MonitorTableProps) => (
               <TableCell className="text-zinc-200">{monitor.intervalSeconds}s</TableCell>
               <TableCell>
                 <div className="flex justify-start">
-                  <UptimeSparkline values={monitor.uptimeSeries} />
+                  <UptimeSparkline
+                    values={toRangeSeries(monitor.uptimeSeries, monitor.intervalSeconds, range)}
+                  />
                 </div>
               </TableCell>
               <TableCell className="text-zinc-400">
