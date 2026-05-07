@@ -70,6 +70,12 @@ const asTimeLabel = (timestamp: number, range: RangeOption) =>
     minute: "2-digit",
   })
 
+const ChartEmptyState = ({ message }: { message: string }) => (
+  <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-zinc-700 text-center text-sm text-zinc-400">
+    {message}
+  </div>
+)
+
 export const NeonOperationsWall = ({
   samples,
   range: rangeProp,
@@ -232,6 +238,13 @@ export const NeonOperationsWall = ({
     [filteredSamples]
   )
   const latestP95 = Math.round(bucketed[bucketed.length - 1].p95)
+  const hasLatencySamples = filteredSamples.some(
+    sample => typeof sample.latencyMs === "number" && Number.isFinite(sample.latencyMs)
+  )
+  const hasUptimeSamples = filteredSamples.length > 0
+  const hasStatusCodeSamples = statusCodeData.length > 0
+  const hasProtocolLatencyData = hasLatencySamples
+  const hasFailureReasons = topFailureReasons.length > 0
 
   return (
     <section className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3 shadow-[0_0_0_1px_rgba(24,24,27,0.8)] sm:p-5">
@@ -281,20 +294,24 @@ export const NeonOperationsWall = ({
         <CardHeader>
           <CardTitle className="text-zinc-100">Latency Percentiles</CardTitle>
         </CardHeader>
-        <CardContent className="h-52 px-2 pb-3 sm:h-72 sm:px-6 sm:pb-6">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={bucketed}>
-              <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-              <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} minTickGap={20} />
-              <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{ background: "#09090b", border: "1px solid #27272a", borderRadius: "0.75rem" }}
-              />
-              <Line type="monotone" dataKey="p50" stroke="#22d3ee" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="p95" stroke="#f59e0b" strokeWidth={2.5} dot={false} />
-              <Line type="monotone" dataKey="p99" stroke="#f97316" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+        <CardContent className="h-52 sm:h-72">
+          {hasLatencySamples ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={bucketed}>
+                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} minTickGap={20} />
+                <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{ background: "#09090b", border: "1px solid #27272a", borderRadius: "0.75rem" }}
+                />
+                <Line type="monotone" dataKey="p50" stroke="#22d3ee" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="p95" stroke="#f59e0b" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="p99" stroke="#f97316" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <ChartEmptyState message="No latency samples yet" />
+          )}
         </CardContent>
       </Card>
 
@@ -303,23 +320,27 @@ export const NeonOperationsWall = ({
           <CardHeader>
             <CardTitle className="text-zinc-100">Uptime Timeline</CardTitle>
           </CardHeader>
-          <CardContent className="h-48 px-2 pb-3 sm:h-64 sm:px-6 sm:pb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={bucketed}>
-                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} minTickGap={20} />
-                <YAxis domain={[0, 100]} tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                <Tooltip
-                  formatter={value => `${Number(value).toFixed(2)}%`}
-                  contentStyle={{
-                    background: "#09090b",
-                    border: "1px solid #27272a",
-                    borderRadius: "0.75rem",
-                  }}
-                />
-                <Area type="monotone" dataKey="uptime" stroke="#4ade80" fill="#22c55e33" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
+          <CardContent className="h-48 sm:h-64">
+            {hasUptimeSamples ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={bucketed}>
+                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} minTickGap={20} />
+                  <YAxis domain={[0, 100]} tick={{ fill: "#a1a1aa", fontSize: 11 }} />
+                  <Tooltip
+                    formatter={value => `${Number(value).toFixed(2)}%`}
+                    contentStyle={{
+                      background: "#09090b",
+                      border: "1px solid #27272a",
+                      borderRadius: "0.75rem",
+                    }}
+                  />
+                  <Area type="monotone" dataKey="uptime" stroke="#4ade80" fill="#22c55e33" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <ChartEmptyState message="No uptime samples yet" />
+            )}
           </CardContent>
         </Card>
 
@@ -327,18 +348,22 @@ export const NeonOperationsWall = ({
           <CardHeader>
             <CardTitle className="text-zinc-100">Status Code Distribution</CardTitle>
           </CardHeader>
-          <CardContent className="h-48 px-2 pb-3 sm:h-64 sm:px-6 sm:pb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={statusCodeData}>
-                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ background: "#09090b", border: "1px solid #27272a", borderRadius: "0.75rem" }}
-                />
-                <Bar dataKey="count" fill="#38bdf8" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="h-48 sm:h-64">
+            {hasStatusCodeSamples ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={statusCodeData}>
+                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ background: "#09090b", border: "1px solid #27272a", borderRadius: "0.75rem" }}
+                  />
+                  <Bar dataKey="count" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <ChartEmptyState message="No status code samples yet" />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -348,7 +373,7 @@ export const NeonOperationsWall = ({
           <CardHeader>
             <CardTitle className="text-zinc-100">Response Size Trend</CardTitle>
           </CardHeader>
-          <CardContent className="h-44 px-2 pb-3 sm:h-56 sm:px-6 sm:pb-6">
+          <CardContent className="h-44 sm:h-56">
             {responseBytesTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={responseBytesTrend}>
@@ -367,9 +392,7 @@ export const NeonOperationsWall = ({
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-zinc-700 text-center text-sm text-zinc-400">
-                No response size samples yet
-              </div>
+              <ChartEmptyState message="No response size samples yet" />
             )}
           </CardContent>
         </Card>
@@ -378,23 +401,27 @@ export const NeonOperationsWall = ({
           <CardHeader>
             <CardTitle className="text-zinc-100">P95 by Protocol</CardTitle>
           </CardHeader>
-          <CardContent className="h-44 px-2 pb-3 sm:h-56 sm:px-6 sm:pb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={protocolLatencySplit}>
-                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                <XAxis dataKey="protocol" tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                <Tooltip
-                  formatter={value => `${value} ms`}
-                  contentStyle={{
-                    background: "#09090b",
-                    border: "1px solid #27272a",
-                    borderRadius: "0.75rem",
-                  }}
-                />
-                <Bar dataKey="p95" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="h-44 sm:h-56">
+            {hasProtocolLatencyData ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={protocolLatencySplit}>
+                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                  <XAxis dataKey="protocol" tick={{ fill: "#a1a1aa", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} />
+                  <Tooltip
+                    formatter={value => `${value} ms`}
+                    contentStyle={{
+                      background: "#09090b",
+                      border: "1px solid #27272a",
+                      borderRadius: "0.75rem",
+                    }}
+                  />
+                  <Bar dataKey="p95" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <ChartEmptyState message="No protocol latency samples yet" />
+            )}
           </CardContent>
         </Card>
 
@@ -402,27 +429,31 @@ export const NeonOperationsWall = ({
           <CardHeader>
             <CardTitle className="text-zinc-100">Top Failure Reasons</CardTitle>
           </CardHeader>
-          <CardContent className="h-44 px-2 pb-3 sm:h-56 sm:px-6 sm:pb-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topFailureReasons} layout="vertical" margin={{ left: 12, right: 12 }}>
-                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                <XAxis type="number" tick={{ fill: "#a1a1aa", fontSize: 11 }} allowDecimals={false} />
-                <YAxis
-                  type="category"
-                  dataKey="reason"
-                  width={140}
-                  tick={{ fill: "#a1a1aa", fontSize: 10 }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "#09090b",
-                    border: "1px solid #27272a",
-                    borderRadius: "0.75rem",
-                  }}
-                />
-                <Bar dataKey="count" fill="#f97316" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="h-44 sm:h-56">
+            {hasFailureReasons ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topFailureReasons} layout="vertical" margin={{ left: 12, right: 12 }}>
+                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                  <XAxis type="number" tick={{ fill: "#a1a1aa", fontSize: 11 }} allowDecimals={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="reason"
+                    width={140}
+                    tick={{ fill: "#a1a1aa", fontSize: 10 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#09090b",
+                      border: "1px solid #27272a",
+                      borderRadius: "0.75rem",
+                    }}
+                  />
+                  <Bar dataKey="count" fill="#f97316" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <ChartEmptyState message="No failure reasons yet" />
+            )}
           </CardContent>
         </Card>
       </div>

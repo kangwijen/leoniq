@@ -147,6 +147,12 @@ describe("NeonOperationsWall", () => {
     const rangeChecksCard = screen.getByText("Checks in range").closest("article")
     expect(rangeChecksCard).not.toBeNull()
     expect(within(rangeChecksCard as HTMLElement).getByText("0")).toBeInTheDocument()
+    expect(screen.getByText("No latency samples yet")).toBeInTheDocument()
+    expect(screen.getByText("No uptime samples yet")).toBeInTheDocument()
+    expect(screen.getByText("No status code samples yet")).toBeInTheDocument()
+    expect(screen.getByText("No response size samples yet")).toBeInTheDocument()
+    expect(screen.getByText("No protocol latency samples yet")).toBeInTheDocument()
+    expect(screen.getByText("No failure reasons yet")).toBeInTheDocument()
   })
 
   it("handles nullable status and latency branches", () => {
