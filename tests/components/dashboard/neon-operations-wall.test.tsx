@@ -124,7 +124,7 @@ describe("NeonOperationsWall", () => {
     expect(rangeSelect).toHaveValue("1h")
     const rangeChecksCard = screen.getByText("Checks in range").closest("article")
     expect(rangeChecksCard).not.toBeNull()
-    expect(within(rangeChecksCard as HTMLElement).getByText("0")).toBeInTheDocument()
+    expect(within(rangeChecksCard as HTMLElement).getByText("1")).toBeInTheDocument()
 
     fireEvent.change(rangeSelect, { target: { value: "7d" } })
     expect(rangeSelect).toHaveValue("7d")
@@ -136,6 +136,8 @@ describe("NeonOperationsWall", () => {
 
     expect(screen.getByText("Latency Percentiles")).toBeInTheDocument()
     expect(screen.getByText("Uptime Timeline")).toBeInTheDocument()
+    expect(screen.getByText("Recent incidents")).toBeInTheDocument()
+    expect(screen.getByText("Showing incidents in selected range.")).toBeInTheDocument()
     expect(screen.getByText("Status Code Distribution")).toBeInTheDocument()
     expect(screen.getByText("Response Size Trend")).toBeInTheDocument()
     expect(screen.getByText("P95 by Protocol")).toBeInTheDocument()
@@ -152,7 +154,21 @@ describe("NeonOperationsWall", () => {
     expect(screen.getByText("No status code samples yet")).toBeInTheDocument()
     expect(screen.getByText("No response size samples yet")).toBeInTheDocument()
     expect(screen.getByText("No protocol latency samples yet")).toBeInTheDocument()
+    expect(screen.getByText("No incidents in the loaded history.")).toBeInTheDocument()
     expect(screen.getByText("No failure reasons yet")).toBeInTheDocument()
+  })
+
+  it("uses selected range for latency and uptime charts", () => {
+    const now = Date.now()
+    const samples = [
+      makeSample(new Date(now - 90 * 60 * 1000).toISOString(), "up", 155),
+      makeSample(new Date(now).toISOString(), "up", 95),
+    ]
+    render(<NeonOperationsWall samples={samples} range="1h" />)
+    const rangeChecksCard = screen.getByText("Checks in range").closest("article")
+    expect(within(rangeChecksCard as HTMLElement).getByText("1")).toBeInTheDocument()
+    expect(screen.queryByText("No latency samples yet")).toBeNull()
+    expect(screen.queryByText("No uptime samples yet")).toBeNull()
   })
 
   it("handles nullable status and latency branches", () => {
@@ -277,5 +293,87 @@ describe("NeonOperationsWall", () => {
 
     expect(screen.getByTestId("injected-filter-panel")).toBeInTheDocument()
     expect(screen.getByText("Custom filter panel")).toBeInTheDocument()
+  })
+
+  it("renders recent incidents table rows when provided", () => {
+    const openedAt = new Date("2026-05-04T14:00:00.000Z").toISOString()
+    const closedAt = new Date("2026-05-04T14:30:00.000Z").toISOString()
+    render(
+      <NeonOperationsWall
+        samples={[]}
+        recentIncidents={[
+          {
+            monitorId: "mid",
+            monitorName: "Payments API",
+            openedAt,
+            closedAt,
+            durationMinutes: 30,
+            reason: "502",
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByRole("link", { name: "Payments API" })).toHaveAttribute(
+      "href",
+      "/dashboard/monitors/mid"
+    )
+    expect(screen.getByText("30 min")).toBeInTheDocument()
+    expect(screen.queryByText("No incidents in the loaded history.")).toBeNull()
+  })
+
+  it("shows Open when an incident has no closed time", () => {
+    render(
+      <NeonOperationsWall
+        samples={[]}
+        recentIncidents={[
+          {
+            monitorId: "m-open",
+            monitorName: "Edge",
+            openedAt: new Date("2026-05-05T09:00:00.000Z").toISOString(),
+            closedAt: null,
+            durationMinutes: 5,
+            reason: null,
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText("Open")).toBeInTheDocument()
+  })
+
+  it("filters recent incidents by selected time range", () => {
+    const now = Date.now()
+    const samples = [makeSample(new Date(now).toISOString(), "up", 120)]
+    const recentOpenedAt = new Date(now - 10 * 60 * 1000).toISOString()
+    const oldOpenedAt = new Date(now - 2 * 60 * 60 * 1000).toISOString()
+
+    render(
+      <NeonOperationsWall
+        samples={samples}
+        recentIncidents={[
+          {
+            monitorId: "m-recent",
+            monitorName: "Recent monitor",
+            openedAt: recentOpenedAt,
+            closedAt: null,
+            durationMinutes: 10,
+            reason: null,
+          },
+          {
+            monitorId: "m-old",
+            monitorName: "Old monitor",
+            openedAt: oldOpenedAt,
+            closedAt: null,
+            durationMinutes: 120,
+            reason: null,
+          },
+        ]}
+      />
+    )
+
+    fireEvent.change(screen.getByLabelText("Time range"), { target: { value: "1h" } })
+    expect(screen.getByRole("link", { name: "Recent monitor" })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Old monitor" })).toBeNull()
   })
 })

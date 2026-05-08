@@ -28,7 +28,6 @@ type Monitor = {
 
 type MonitorTableProps = {
   monitors: Monitor[]
-  range?: RangeOption
 }
 
 const RANGE_SECONDS: Record<RangeOption, number> = {
@@ -38,12 +37,14 @@ const RANGE_SECONDS: Record<RangeOption, number> = {
   "7d": 7 * 24 * 60 * 60,
 }
 
+const SPARKLINE_RANGE: RangeOption = "24h"
+
 const toRangeSeries = (values: number[], intervalSeconds: number, range: RangeOption) => {
   const maxPoints = Math.max(1, Math.floor(RANGE_SECONDS[range] / Math.max(1, intervalSeconds)))
   return values.slice(-maxPoints)
 }
 
-export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => (
+export const MonitorTable = ({ monitors }: MonitorTableProps) => (
   <div className="space-y-3">
     <div className="space-y-3 md:hidden">
       {monitors.map(monitor => {
@@ -101,17 +102,19 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
                   : "No checks yet"}
               </p>
             </div>
-            <div className="col-span-2">
-              <p className="mb-1 text-xs text-zinc-500">Uptime</p>
-              <UptimeSparkline
-                values={toRangeSeries(monitor.uptimeSeries, monitor.intervalSeconds, range)}
-              />
-            </div>
-            <div className="col-span-2">
-              <p className="mb-1 text-xs text-zinc-500">Latency</p>
-              <LatencySparkline
-                values={toRangeSeries(monitor.latencySeries, monitor.intervalSeconds, range)}
-              />
+            <div className="col-span-2 grid grid-cols-2 gap-3">
+              <div className="min-w-0">
+                <p className="mb-1 text-xs text-zinc-500">Uptime</p>
+                <UptimeSparkline
+                  values={toRangeSeries(monitor.uptimeSeries, monitor.intervalSeconds, SPARKLINE_RANGE)}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="mb-1 text-xs text-zinc-500">Latency</p>
+                <LatencySparkline
+                  values={toRangeSeries(monitor.latencySeries, monitor.intervalSeconds, SPARKLINE_RANGE)}
+                />
+              </div>
             </div>
           </div>
 
@@ -185,14 +188,14 @@ export const MonitorTable = ({ monitors, range = "24h" }: MonitorTableProps) => 
               <TableCell>
                 <div className="flex justify-start">
                   <UptimeSparkline
-                    values={toRangeSeries(monitor.uptimeSeries, monitor.intervalSeconds, range)}
+                    values={toRangeSeries(monitor.uptimeSeries, monitor.intervalSeconds, SPARKLINE_RANGE)}
                   />
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex justify-start">
                   <LatencySparkline
-                    values={toRangeSeries(monitor.latencySeries, monitor.intervalSeconds, range)}
+                    values={toRangeSeries(monitor.latencySeries, monitor.intervalSeconds, SPARKLINE_RANGE)}
                   />
                 </div>
               </TableCell>

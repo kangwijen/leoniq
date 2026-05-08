@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { MonitorActions } from "@/components/dashboard/monitor-actions"
 
 const refreshMock = jest.fn()
 const pushMock = jest.fn()
@@ -58,8 +59,6 @@ jest.mock("@/components/ui/alert-dialog", () => ({
     onClick?: () => void
   }) => <button onClick={onClick}>{children}</button>,
 }))
-
-const { MonitorActions } = require("@/components/dashboard/monitor-actions")
 
 describe("MonitorActions", () => {
   beforeEach(() => {

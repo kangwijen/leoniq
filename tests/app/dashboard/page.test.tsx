@@ -85,8 +85,8 @@ describe("DashboardPage orchestration", () => {
   })
 
   it("requests session and monitor data, requests 7-day samples, and renders empty state", async () => {
-    const now = new Date("2026-05-07T12:00:00.000Z").getTime()
-    const nowSpy = jest.spyOn(Date, "now").mockReturnValue(now)
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date("2026-05-07T12:00:00.000Z"))
 
     mockRequireSession.mockResolvedValue({
       user: {
@@ -108,13 +108,13 @@ describe("DashboardPage orchestration", () => {
     expect(mockMonitorList).toHaveBeenCalledWith({ userId: "user-1" })
     expect(mockListByUserSince).toHaveBeenCalledWith(
       "user-1",
-      new Date(now - 7 * 24 * 60 * 60 * 1000)
+      new Date("2026-04-30T12:00:00.000Z")
     )
     expect(mockListByMonitor).not.toHaveBeenCalled()
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-samples", "0")
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-monitors", "0")
 
-    nowSpy.mockRestore()
+    jest.useRealTimers()
   })
 
   it("renders monitor table when monitors exist", async () => {

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react"
+import { MonitorTable } from "@/components/dashboard/monitor-table"
 
 jest.mock("next/link", () => ({
   __esModule: true,
@@ -33,8 +34,6 @@ jest.mock("@/components/dashboard/uptime-sparkline", () => ({
 jest.mock("@/components/dashboard/latency-sparkline", () => ({
   LatencySparkline: ({ values }: { values: number[] }) => <div>latency-points:{values.length}</div>,
 }))
-
-const { MonitorTable } = require("@/components/dashboard/monitor-table")
 
 describe("MonitorTable", () => {
   it("renders monitor rows with status and action components", () => {
@@ -76,12 +75,11 @@ describe("MonitorTable", () => {
     expect(screen.getAllByText("latency-points:3").length).toBeGreaterThan(0)
   })
 
-  it("slices uptime sparkline values based on selected range", () => {
+  it("slices sparkline values using the default dashboard range", () => {
     const longSeries = Array.from({ length: 120 }, () => 1)
 
     render(
       <MonitorTable
-        range="1h"
         monitors={[
           {
             id: "1",
@@ -98,8 +96,8 @@ describe("MonitorTable", () => {
       />
     )
 
-    expect(screen.getAllByText("points:30").length).toBeGreaterThan(0)
-    expect(screen.getAllByText("latency-points:30").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("points:120").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("latency-points:120").length).toBeGreaterThan(0)
   })
 
   it("renders tag badges in mobile and table layouts", () => {
@@ -151,5 +149,44 @@ describe("MonitorTable", () => {
     expect(screen.getAllByRole("link", { name: "No tags monitor" }).length).toBeGreaterThan(0)
     expect(screen.queryByText("prod")).toBeNull()
     expect(screen.getAllByText("latency-points:0").length).toBeGreaterThan(0)
+  })
+
+  it("renders mobile uptime and latency sparklines in one row", () => {
+    render(
+      <MonitorTable
+        monitors={[
+          {
+            id: "mobile-layout-check",
+            name: "Mobile layout monitor",
+            type: "http",
+            active: true,
+            lastStatus: "up",
+            intervalSeconds: 60,
+            lastCheckedAt: null,
+            uptimeSeries: [1, 1, 1],
+            latencySeries: [100, 120, 110],
+          },
+        ]}
+      />
+    )
+
+    const mobileCardLink = screen
+      .getAllByRole("link", { name: "Mobile layout monitor" })
+      .find(link => link.closest("article") !== null)
+
+    expect(mobileCardLink).toBeTruthy()
+    const mobileCard = mobileCardLink?.closest("article")
+    expect(mobileCard).toBeTruthy()
+
+    const uptimeLabel = mobileCard?.querySelector("p.text-zinc-500")
+    expect(mobileCard?.textContent).toContain("Uptime")
+    expect(mobileCard?.textContent).toContain("Latency")
+
+    const oneRowSparklineGrid = Array.from(
+      mobileCard?.querySelectorAll("div") ?? []
+    ).find(node => node.className.includes("grid-cols-2"))
+
+    expect(uptimeLabel).toBeTruthy()
+    expect(oneRowSparklineGrid).toBeTruthy()
   })
 })

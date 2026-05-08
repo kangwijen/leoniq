@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { MonitorTable } from "@/components/dashboard/monitor-table"
 import { NeonOperationsWall, type RangeOption } from "@/components/dashboard/neon-operations-wall"
+import type { RecentIncidentSummary } from "@/lib/monitor/incidents-summary"
 
 type Sample = {
   monitorId: string
@@ -42,9 +43,14 @@ type Monitor = {
 type DashboardLiveSectionsProps = {
   samples: Sample[]
   monitors: Monitor[]
+  recentIncidents?: RecentIncidentSummary[]
 }
 
-export const DashboardLiveSections = ({ samples, monitors }: DashboardLiveSectionsProps) => {
+export const DashboardLiveSections = ({
+  samples,
+  monitors,
+  recentIncidents = [],
+}: DashboardLiveSectionsProps) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -113,6 +119,7 @@ export const DashboardLiveSections = ({ samples, monitors }: DashboardLiveSectio
         samples={filteredSamples}
         range={range}
         onRangeChange={setRange}
+        recentIncidents={recentIncidents.filter(item => visibleMonitorIds.has(item.monitorId))}
         filterPanel={
           <>
             <div className="space-y-2">
@@ -189,7 +196,7 @@ export const DashboardLiveSections = ({ samples, monitors }: DashboardLiveSectio
           No monitors match the current filters. Try another type or tag.
         </div>
       ) : (
-        <MonitorTable monitors={filteredMonitors} range={range} />
+        <MonitorTable monitors={filteredMonitors} />
       )}
     </>
   )

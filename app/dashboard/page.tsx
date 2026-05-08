@@ -6,13 +6,15 @@ import { RealtimeRefresh } from "@/components/dashboard/realtime-refresh"
 import { DashboardKpis } from "@/components/dashboard/dashboard-kpis"
 import { WebhookSettings } from "@/components/dashboard/webhook-settings"
 import { userRepository } from "@/lib/user/repository"
+import { summarizeRecentIncidentsFromSamples } from "@/lib/monitor/incidents-summary"
 import { DashboardLiveSections } from "@/components/dashboard/dashboard-live-sections"
 
 export default async function DashboardPage() {
   const session = await requireSession()
   const user = await userRepository.getById(session.user.id)
   const monitors = await monitorRepository.list({ userId: session.user.id })
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
   const operationSamples = await checkResultsRepository.listByUserSince(session.user.id, sevenDaysAgo)
   const monitorSeries = await Promise.all(
     monitors.map(async monitor => {
@@ -28,6 +30,17 @@ export default async function DashboardPage() {
   )
   const seriesByMonitorId = new Map(monitorSeries.map(item => [item.monitorId, item.series]))
   const latencySeriesByMonitorId = new Map(monitorSeries.map(item => [item.monitorId, item.latencySeries]))
+
+  const recentIncidents = summarizeRecentIncidentsFromSamples(
+    operationSamples.map(sample => ({
+      monitorId: sample.monitorId,
+      monitorName: sample.monitorName,
+      checkedAt: sample.checkedAt,
+      status: sample.status as "up" | "down",
+      errorMessage: sample.errorMessage,
+    })),
+    15
+  )
 
   return (
     <main className="min-h-screen w-full bg-zinc-950 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
@@ -82,6 +95,7 @@ export default async function DashboardPage() {
           latencySeries: latencySeriesByMonitorId.get(item.id) as number[],
           tags: item.tags ?? [],
         }))}
+        recentIncidents={recentIncidents}
       />
       </div>
     </main>

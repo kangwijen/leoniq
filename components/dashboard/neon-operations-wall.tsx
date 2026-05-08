@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import {
@@ -15,7 +16,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import type { RecentIncidentSummary } from "@/lib/monitor/incidents-summary"
 import {
   Select,
   SelectContent,
@@ -41,6 +51,7 @@ type NeonOperationsWallProps = {
   range?: RangeOption
   onRangeChange?: (value: RangeOption) => void
   filterPanel?: ReactNode
+  recentIncidents?: RecentIncidentSummary[]
 }
 
 export type RangeOption = "1h" | "6h" | "24h" | "7d"
@@ -70,6 +81,78 @@ const asTimeLabel = (timestamp: number, range: RangeOption) =>
     minute: "2-digit",
   })
 
+type BucketRow = {
+  timestamp: number
+  label: string
+  p50: number
+  p95: number
+  p99: number
+  uptime: number
+}
+
+const getReferenceTimeMs = (sourceSamples: MonitorSample[]) =>
+  sourceSamples.reduce((latest, sample) => {
+    const sampleMs = new Date(sample.checkedAt).getTime()
+    return sampleMs > latest ? sampleMs : latest
+  }, 0)
+
+const getLatestIncidentTimeMs = (sourceIncidents: RecentIncidentSummary[]) =>
+  sourceIncidents.reduce((latest, incident) => {
+    const incidentMs = new Date(incident.openedAt).getTime()
+    return incidentMs > latest ? incidentMs : latest
+  }, 0)
+
+const computeBucketSeries = (
+  sourceSamples: MonitorSample[],
+  window: RangeOption,
+  referenceTimeMs: number
+): BucketRow[] => {
+  const rangeMs = RANGE_MS[window]
+  const cutoff = referenceTimeMs - rangeMs
+  const windowSamples = sourceSamples
+    .filter(item => new Date(item.checkedAt).getTime() >= cutoff)
+    .sort((a, b) => new Date(a.checkedAt).getTime() - new Date(b.checkedAt).getTime())
+
+  const bucketCount = window === "1h" ? 12 : window === "6h" ? 24 : window === "24h" ? 48 : 56
+  const start = referenceTimeMs - rangeMs
+  const bucketSize = Math.max(1, Math.floor(rangeMs / bucketCount))
+  const buckets = Array.from({ length: bucketCount }, (_, index) => ({
+    timestamp: start + index * bucketSize,
+    latencies: [] as number[],
+    total: 0,
+    up: 0,
+  }))
+
+  for (const sample of windowSamples) {
+    const at = new Date(sample.checkedAt).getTime()
+    const normalizedIndex = Math.floor((at - start) / bucketSize)
+    const index = Math.max(0, Math.min(bucketCount - 1, normalizedIndex))
+    const bucket = buckets[index]
+    bucket.total += 1
+    if (sample.status === "up") {
+      bucket.up += 1
+    }
+    if (typeof sample.latencyMs === "number" && Number.isFinite(sample.latencyMs)) {
+      bucket.latencies.push(sample.latencyMs)
+    }
+  }
+
+  return buckets.map(bucket => {
+    const p50 = percentile(bucket.latencies, 50)
+    const p95 = percentile(bucket.latencies, 95)
+    const p99 = percentile(bucket.latencies, 99)
+    const uptime = bucket.total > 0 ? (bucket.up / bucket.total) * 100 : 0
+    return {
+      timestamp: bucket.timestamp,
+      label: asTimeLabel(bucket.timestamp, window),
+      p50,
+      p95,
+      p99,
+      uptime,
+    }
+  })
+}
+
 const ChartEmptyState = ({ message }: { message: string }) => (
   <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-zinc-700 text-center text-sm text-zinc-400">
     {message}
@@ -81,9 +164,14 @@ export const NeonOperationsWall = ({
   range: rangeProp,
   onRangeChange,
   filterPanel,
+  recentIncidents = [],
 }: NeonOperationsWallProps) => {
   const [internalRange, setInternalRange] = useState<RangeOption>("24h")
   const range = rangeProp ?? internalRange
+  const referenceTimeMs = useMemo(
+    () => Math.max(getReferenceTimeMs(samples), getLatestIncidentTimeMs(recentIncidents)),
+    [recentIncidents, samples]
+  )
 
   const setRange = (value: RangeOption) => {
     if (rangeProp === undefined) {
@@ -94,54 +182,16 @@ export const NeonOperationsWall = ({
 
   const filteredSamples = useMemo(() => {
     const rangeMs = RANGE_MS[range]
-    const cutoff = Date.now() - rangeMs
+    const cutoff = referenceTimeMs - rangeMs
     return samples
       .filter(item => new Date(item.checkedAt).getTime() >= cutoff)
       .sort((a, b) => new Date(a.checkedAt).getTime() - new Date(b.checkedAt).getTime())
-  }, [range, samples])
+  }, [range, referenceTimeMs, samples])
 
-  const bucketed = useMemo(() => {
-    const bucketCount = range === "1h" ? 12 : range === "6h" ? 24 : range === "24h" ? 48 : 56
-    const rangeMs = RANGE_MS[range]
-    const now = Date.now()
-    const start = now - rangeMs
-    const bucketSize = Math.max(1, Math.floor(rangeMs / bucketCount))
-    const buckets = Array.from({ length: bucketCount }, (_, index) => ({
-      timestamp: start + index * bucketSize,
-      latencies: [] as number[],
-      total: 0,
-      up: 0,
-    }))
-
-    for (const sample of filteredSamples) {
-      const at = new Date(sample.checkedAt).getTime()
-      const normalizedIndex = Math.floor((at - start) / bucketSize)
-      const index = Math.max(0, Math.min(bucketCount - 1, normalizedIndex))
-      const bucket = buckets[index]
-      bucket.total += 1
-      if (sample.status === "up") {
-        bucket.up += 1
-      }
-      if (typeof sample.latencyMs === "number" && Number.isFinite(sample.latencyMs)) {
-        bucket.latencies.push(sample.latencyMs)
-      }
-    }
-
-    return buckets.map(bucket => {
-      const p50 = percentile(bucket.latencies, 50)
-      const p95 = percentile(bucket.latencies, 95)
-      const p99 = percentile(bucket.latencies, 99)
-      const uptime = bucket.total > 0 ? (bucket.up / bucket.total) * 100 : 0
-      return {
-        timestamp: bucket.timestamp,
-        label: asTimeLabel(bucket.timestamp, range),
-        p50,
-        p95,
-        p99,
-        uptime,
-      }
-    })
-  }, [filteredSamples, range])
+  const bucketedRange = useMemo(
+    () => computeBucketSeries(samples, range, referenceTimeMs),
+    [range, referenceTimeMs, samples]
+  )
 
   const statusCodeData = useMemo(() => {
     const groups = new Map<string, number>()
@@ -237,13 +287,19 @@ export const NeonOperationsWall = ({
     () => filteredSamples.filter(item => item.status === "down").length,
     [filteredSamples]
   )
-  const latestP95 = Math.round(bucketed[bucketed.length - 1].p95)
-  const hasLatencySamples = filteredSamples.some(
+  const filteredRecentIncidents = useMemo(() => {
+    const cutoffMs = referenceTimeMs - RANGE_MS[range]
+    return recentIncidents.filter(item => new Date(item.openedAt).getTime() >= cutoffMs)
+  }, [range, recentIncidents, referenceTimeMs])
+  const hasRangeLatencySamples = filteredSamples.some(
     sample => typeof sample.latencyMs === "number" && Number.isFinite(sample.latencyMs)
   )
-  const hasUptimeSamples = filteredSamples.length > 0
+  const hasRangeUptimeSamples = filteredSamples.length > 0
+  const latestP95 = Math.round(bucketedRange[bucketedRange.length - 1].p95)
   const hasStatusCodeSamples = statusCodeData.length > 0
-  const hasProtocolLatencyData = hasLatencySamples
+  const hasProtocolLatencyData = filteredSamples.some(
+    sample => typeof sample.latencyMs === "number" && Number.isFinite(sample.latencyMs)
+  )
   const hasFailureReasons = topFailureReasons.length > 0
 
   return (
@@ -290,79 +346,141 @@ export const NeonOperationsWall = ({
         </article>
       </div>
 
-      <Card className="border-zinc-800 bg-zinc-950/70">
-        <CardHeader>
-          <CardTitle className="text-zinc-100">Latency Percentiles</CardTitle>
-        </CardHeader>
-        <CardContent className="h-52 sm:h-72">
-          {hasLatencySamples ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={bucketed}>
-                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} minTickGap={20} />
-                <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{ background: "#09090b", border: "1px solid #27272a", borderRadius: "0.75rem" }}
-                />
-                <Line type="monotone" dataKey="p50" stroke="#22d3ee" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="p95" stroke="#f59e0b" strokeWidth={2.5} dot={false} />
-                <Line type="monotone" dataKey="p99" stroke="#f97316" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <ChartEmptyState message="No latency samples yet" />
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,34%)] xl:items-stretch">
+        <div className="flex min-w-0 flex-col gap-3">
+          <Card className="border-zinc-800 bg-zinc-950/70">
+            <CardHeader>
+              <CardTitle className="text-zinc-100">Latency Percentiles</CardTitle>
+              <CardDescription className="text-xs text-zinc-500">
+                Window follows selected time range.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-52 sm:h-72">
+              {hasRangeLatencySamples ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={bucketedRange}>
+                    <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} minTickGap={20} />
+                    <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{ background: "#09090b", border: "1px solid #27272a", borderRadius: "0.75rem" }}
+                    />
+                    <Line type="monotone" dataKey="p50" stroke="#22d3ee" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="p95" stroke="#f59e0b" strokeWidth={2.5} dot={false} />
+                    <Line type="monotone" dataKey="p99" stroke="#f97316" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <ChartEmptyState message="No latency samples yet" />
+              )}
+            </CardContent>
+          </Card>
 
-      <div className="grid gap-3 sm:gap-4 xl:grid-cols-2">
-        <Card className="border-zinc-800 bg-zinc-950/70">
-          <CardHeader>
-            <CardTitle className="text-zinc-100">Uptime Timeline</CardTitle>
-          </CardHeader>
-          <CardContent className="h-48 sm:h-64">
-            {hasUptimeSamples ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={bucketed}>
-                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} minTickGap={20} />
-                  <YAxis domain={[0, 100]} tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                  <Tooltip
-                    formatter={value => `${Number(value).toFixed(2)}%`}
-                    contentStyle={{
-                      background: "#09090b",
-                      border: "1px solid #27272a",
-                      borderRadius: "0.75rem",
-                    }}
-                  />
-                  <Area type="monotone" dataKey="uptime" stroke="#4ade80" fill="#22c55e33" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <ChartEmptyState message="No uptime samples yet" />
-            )}
-          </CardContent>
-        </Card>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Card className="border-zinc-800 bg-zinc-950/70">
+              <CardHeader>
+                <CardTitle className="text-zinc-100">Uptime Timeline</CardTitle>
+                <CardDescription className="text-xs text-zinc-500">
+                  Window follows selected time range.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="h-48 sm:h-64">
+                {hasRangeUptimeSamples ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={bucketedRange}>
+                      <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} minTickGap={20} />
+                      <YAxis domain={[0, 100]} tick={{ fill: "#a1a1aa", fontSize: 11 }} />
+                      <Tooltip
+                        formatter={value => `${Number(value).toFixed(2)}%`}
+                        contentStyle={{
+                          background: "#09090b",
+                          border: "1px solid #27272a",
+                          borderRadius: "0.75rem",
+                        }}
+                      />
+                      <Area type="monotone" dataKey="uptime" stroke="#4ade80" fill="#22c55e33" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <ChartEmptyState message="No uptime samples yet" />
+                )}
+              </CardContent>
+            </Card>
 
-        <Card className="border-zinc-800 bg-zinc-950/70">
-          <CardHeader>
-            <CardTitle className="text-zinc-100">Status Code Distribution</CardTitle>
+            <Card className="border-zinc-800 bg-zinc-950/70">
+              <CardHeader>
+                <CardTitle className="text-zinc-100">Status Code Distribution</CardTitle>
+              </CardHeader>
+              <CardContent className="h-48 sm:h-64">
+                {hasStatusCodeSamples ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={statusCodeData}>
+                      <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={{ background: "#09090b", border: "1px solid #27272a", borderRadius: "0.75rem" }}
+                      />
+                      <Bar dataKey="count" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <ChartEmptyState message="No status code samples yet" />
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Card className="flex min-h-[280px] flex-col border-zinc-800 bg-zinc-950/70 xl:h-full xl:min-h-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-zinc-100">Recent incidents</CardTitle>
+            <CardDescription className="text-xs text-zinc-500">
+              Outage windows inferred from check history.
+              <span className="ml-1 text-cyan-300">Showing incidents in selected range.</span>
+            </CardDescription>
           </CardHeader>
-          <CardContent className="h-48 sm:h-64">
-            {hasStatusCodeSamples ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={statusCodeData}>
-                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{ background: "#09090b", border: "1px solid #27272a", borderRadius: "0.75rem" }}
-                  />
-                  <Bar dataKey="count" fill="#38bdf8" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          <CardContent className="flex min-h-0 flex-1 overflow-auto px-2 sm:px-4">
+            {filteredRecentIncidents.length === 0 ? (
+              <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-zinc-700 px-2 py-8 text-center text-sm text-zinc-400">
+                No incidents in the loaded history.
+              </div>
             ) : (
-              <ChartEmptyState message="No status code samples yet" />
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-zinc-800 hover:bg-transparent">
+                    <TableHead className="text-zinc-400">Monitor</TableHead>
+                    <TableHead className="text-zinc-400">Started</TableHead>
+                    <TableHead className="text-zinc-400">Ended</TableHead>
+                    <TableHead className="text-right text-zinc-400">Duration</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRecentIncidents.map(row => (
+                    <TableRow
+                      key={`${row.monitorId}-${row.openedAt}-${row.closedAt ?? "open"}`}
+                      className="border-zinc-800"
+                    >
+                      <TableCell className="max-w-[140px] truncate font-medium text-zinc-200">
+                        <Link
+                          href={`/dashboard/monitors/${row.monitorId}`}
+                          className="text-cyan-300 underline-offset-2 hover:text-cyan-200 hover:underline"
+                        >
+                          {row.monitorName}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-xs text-zinc-400">
+                        {new Date(row.openedAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-xs text-zinc-400">
+                        {row.closedAt ? new Date(row.closedAt).toLocaleString() : "Open"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-zinc-300">{row.durationMinutes} min</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>
