@@ -9,6 +9,7 @@ It provides:
 - Time range controls for 1 hour, 6 hours, 24 hours, and 7 days
 - Monitor tags, filtered dashboard views, and shareable filter URLs
 - Incident timeline on monitor detail pages
+- Recent incidents table on the dashboard with direct links to monitor detail pages
 - Uptime and latency sparklines in monitor lists
 - Per user webhook configuration
 - Severity aware alert deduplication with cooldown policies
@@ -58,9 +59,12 @@ Open `http://localhost:3000`.
 - Compact operations wall with range based trends for:
   - latency percentiles
   - uptime timeline
+  - latest p95 latency KPI
   - status code distribution
   - response size trend
   - top failure reasons
+- Recent incidents card:
+  - filtered by selected time range
 - Monitor list with:
   - uptime sparkline
   - latency sparkline
