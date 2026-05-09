@@ -17,6 +17,7 @@ import {
   YAxis,
 } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import {
   Table,
   TableBody,
@@ -25,7 +26,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { detectDashboardAnomalies } from "@/lib/monitor/anomaly-detection"
 import type { RecentIncidentSummary } from "@/lib/monitor/incidents-summary"
+import { RANGE_MS, type DashboardCheckSample, type RangeOption } from "@/lib/types"
 import {
   Select,
   SelectContent,
@@ -34,33 +37,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-type MonitorSample = {
-  monitorId: string
-  monitorName: string
-  monitorType: "http" | "tcp"
-  checkedAt: string
-  status: "up" | "down"
-  latencyMs: number | null
-  statusCode: number | null
-  errorMessage: string | null
-  meta: Record<string, unknown> | null
-}
+export type { RangeOption } from "@/lib/types"
+export { RANGE_MS } from "@/lib/types"
 
 type NeonOperationsWallProps = {
-  samples: MonitorSample[]
+  samples: DashboardCheckSample[]
   range?: RangeOption
   onRangeChange?: (value: RangeOption) => void
   filterPanel?: ReactNode
   recentIncidents?: RecentIncidentSummary[]
-}
-
-export type RangeOption = "1h" | "6h" | "24h" | "7d"
-
-const RANGE_MS: Record<RangeOption, number> = {
-  "1h": 1 * 60 * 60 * 1000,
-  "6h": 6 * 60 * 60 * 1000,
-  "24h": 24 * 60 * 60 * 1000,
-  "7d": 7 * 24 * 60 * 60 * 1000,
 }
 
 const percentile = (values: number[], target: number) => {
@@ -88,9 +73,10 @@ type BucketRow = {
   p95: number
   p99: number
   uptime: number
+  checks: number
 }
 
-const getReferenceTimeMs = (sourceSamples: MonitorSample[]) =>
+const getReferenceTimeMs = (sourceSamples: DashboardCheckSample[]) =>
   sourceSamples.reduce((latest, sample) => {
     const sampleMs = new Date(sample.checkedAt).getTime()
     return sampleMs > latest ? sampleMs : latest
@@ -103,7 +89,7 @@ const getLatestIncidentTimeMs = (sourceIncidents: RecentIncidentSummary[]) =>
   }, 0)
 
 const computeBucketSeries = (
-  sourceSamples: MonitorSample[],
+  sourceSamples: DashboardCheckSample[],
   window: RangeOption,
   referenceTimeMs: number
 ): BucketRow[] => {
@@ -149,6 +135,7 @@ const computeBucketSeries = (
       p95,
       p99,
       uptime,
+      checks: bucket.total,
     }
   })
 }
@@ -291,6 +278,19 @@ export const NeonOperationsWall = ({
     const cutoffMs = referenceTimeMs - RANGE_MS[range]
     return recentIncidents.filter(item => new Date(item.openedAt).getTime() >= cutoffMs)
   }, [range, recentIncidents, referenceTimeMs])
+
+  const anomalies = useMemo(
+    () =>
+      detectDashboardAnomalies(
+        bucketedRange.map(b => ({
+          p95: b.p95,
+          uptimePercent: b.uptime,
+          checks: b.checks,
+        })),
+        filteredSamples.map(s => ({ status: s.status }))
+      ),
+    [bucketedRange, filteredSamples]
+  )
   const hasRangeLatencySamples = filteredSamples.some(
     sample => typeof sample.latencyMs === "number" && Number.isFinite(sample.latencyMs)
   )
@@ -301,6 +301,31 @@ export const NeonOperationsWall = ({
     sample => typeof sample.latencyMs === "number" && Number.isFinite(sample.latencyMs)
   )
   const hasFailureReasons = topFailureReasons.length > 0
+
+  const latencyBadgeClass =
+    anomalies.latency.status === "anomaly"
+      ? "bg-amber-500/20 text-amber-200"
+      : anomalies.latency.status === "insufficient_data"
+        ? "bg-zinc-500/20 text-zinc-300"
+        : "bg-emerald-500/20 text-emerald-200"
+  const uptimeBadgeClass =
+    anomalies.uptime.status === "anomaly"
+      ? "bg-amber-500/20 text-amber-200"
+      : anomalies.uptime.status === "insufficient_data"
+        ? "bg-zinc-500/20 text-zinc-300"
+        : "bg-emerald-500/20 text-emerald-200"
+  const latencyLabel =
+    anomalies.latency.status === "anomaly"
+      ? "Anomaly"
+      : anomalies.latency.status === "insufficient_data"
+        ? "Not enough data"
+        : "Normal"
+  const uptimeLabel =
+    anomalies.uptime.status === "anomaly"
+      ? "Anomaly"
+      : anomalies.uptime.status === "insufficient_data"
+        ? "Not enough data"
+        : "Normal"
 
   return (
     <section className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3 shadow-[0_0_0_1px_rgba(24,24,27,0.8)] sm:p-5">
@@ -433,57 +458,84 @@ export const NeonOperationsWall = ({
           </div>
         </div>
 
-        <Card className="flex min-h-[280px] flex-col border-zinc-800 bg-zinc-950/70 xl:h-full xl:min-h-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-zinc-100">Recent incidents</CardTitle>
-            <CardDescription className="text-xs text-zinc-500">
-              Outage windows inferred from check history.
-              <span className="ml-1 text-cyan-300">Showing incidents in selected range.</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 overflow-auto px-2 sm:px-4">
-            {filteredRecentIncidents.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-zinc-700 px-2 py-8 text-center text-sm text-zinc-400">
-                No incidents in the loaded history.
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-zinc-800 hover:bg-transparent">
-                    <TableHead className="text-zinc-400">Monitor</TableHead>
-                    <TableHead className="text-zinc-400">Started</TableHead>
-                    <TableHead className="text-zinc-400">Ended</TableHead>
-                    <TableHead className="text-right text-zinc-400">Duration</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRecentIncidents.map(row => (
-                    <TableRow
-                      key={`${row.monitorId}-${row.openedAt}-${row.closedAt ?? "open"}`}
-                      className="border-zinc-800"
-                    >
-                      <TableCell className="max-w-[140px] truncate font-medium text-zinc-200">
-                        <Link
-                          href={`/dashboard/monitors/${row.monitorId}`}
-                          className="text-cyan-300 underline-offset-2 hover:text-cyan-200 hover:underline"
-                        >
-                          {row.monitorName}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-zinc-400">
-                        {new Date(row.openedAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-zinc-400">
-                        {row.closedAt ? new Date(row.closedAt).toLocaleString() : "Open"}
-                      </TableCell>
-                      <TableCell className="text-right text-xs text-zinc-300">{row.durationMinutes} min</TableCell>
+        <div className="flex min-h-0 flex-col gap-3 xl:h-full">
+          <Card className="flex min-h-[280px] flex-col border-zinc-800 bg-zinc-950/70 xl:min-h-0 xl:flex-1">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-zinc-100">Recent incidents</CardTitle>
+              <CardDescription className="text-xs text-zinc-500">
+                Outage windows inferred from check history.
+                <span className="ml-1 text-cyan-300">Showing incidents in selected range.</span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex min-h-0 flex-1 overflow-auto px-2 sm:px-4">
+              {filteredRecentIncidents.length === 0 ? (
+                <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-zinc-700 px-2 py-8 text-center text-sm text-zinc-400">
+                  No incidents in the loaded history.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-zinc-800 hover:bg-transparent">
+                      <TableHead className="text-zinc-400">Monitor</TableHead>
+                      <TableHead className="text-zinc-400">Started</TableHead>
+                      <TableHead className="text-zinc-400">Ended</TableHead>
+                      <TableHead className="text-right text-zinc-400">Duration</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRecentIncidents.map(row => (
+                      <TableRow
+                        key={`${row.monitorId}-${row.openedAt}-${row.closedAt ?? "open"}`}
+                        className="border-zinc-800"
+                      >
+                        <TableCell className="max-w-[140px] truncate font-medium text-zinc-200">
+                          <Link
+                            href={`/dashboard/monitors/${row.monitorId}`}
+                            className="text-cyan-300 underline-offset-2 hover:text-cyan-200 hover:underline"
+                          >
+                            {row.monitorName}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-zinc-400">
+                          {new Date(row.openedAt).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-zinc-400">
+                          {row.closedAt ? new Date(row.closedAt).toLocaleString() : "Open"}
+                        </TableCell>
+                        <TableCell className="text-right text-xs text-zinc-300">{row.durationMinutes} min</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-zinc-800 bg-zinc-900/50 xl:shrink-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-zinc-100">Anomaly signals</CardTitle>
+              <CardDescription className="text-xs text-zinc-500">
+                Heuristics on the same time range as the charts. Not a replacement for alerts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-zinc-200">Latency p95</p>
+                  <Badge className={latencyBadgeClass}>{latencyLabel}</Badge>
+                </div>
+                <p className="mt-2 text-xs text-zinc-400">{anomalies.latency.reason}</p>
+              </div>
+              <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-zinc-200">Uptime</p>
+                  <Badge className={uptimeBadgeClass}>{uptimeLabel}</Badge>
+                </div>
+                <p className="mt-2 text-xs text-zinc-400">{anomalies.uptime.reason}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:gap-4 xl:grid-cols-3">

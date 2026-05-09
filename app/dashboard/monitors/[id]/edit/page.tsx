@@ -4,6 +4,7 @@ import { MonitorEditForm } from "@/components/dashboard/monitor-edit-form"
 import { Button } from "@/components/ui/button"
 import { monitorRepository } from "@/lib/monitor/repository"
 import { requireSession } from "@/lib/session"
+import type { MonitorKind } from "@/lib/types"
 
 export default async function EditMonitorPage(segmentData: {
   params: Promise<{ id: string }>
@@ -29,7 +30,7 @@ export default async function EditMonitorPage(segmentData: {
         monitor={{
           id: monitor.id,
           name: monitor.name,
-          type: monitor.type as "http" | "tcp",
+          type: monitor.type as MonitorKind,
           url: monitor.url,
           host: monitor.host,
           port: monitor.port,

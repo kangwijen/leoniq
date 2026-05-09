@@ -97,4 +97,22 @@ describe("MonitorChart", () => {
     expect(areaProps.dataKey).toBe("uptimeValue")
     expect(areaProps.type).toBe("stepAfter")
   })
+
+  it("formats X axis ticks with date-style labels when timeRange is 7d", () => {
+    const data = [
+      { checkedAt: "2026-05-07T12:00:00.000Z", latencyMs: 100, status: "up" as const },
+    ]
+    const toLocaleStringSpy = jest.spyOn(Date.prototype, "toLocaleString").mockReturnValue("May 7, 12:00 PM")
+
+    render(<MonitorChart title="Week view" data={data} timeRange="7d" />)
+
+    expect(toLocaleStringSpy).toHaveBeenCalledWith(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+
+    toLocaleStringSpy.mockRestore()
+  })
 })

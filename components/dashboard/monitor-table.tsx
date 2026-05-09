@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { MonitorActions } from "@/components/dashboard/monitor-actions"
 import { LatencySparkline } from "@/components/dashboard/latency-sparkline"
 import { UptimeSparkline } from "@/components/dashboard/uptime-sparkline"
-import type { RangeOption } from "@/components/dashboard/neon-operations-wall"
+import type { DashboardMonitor, RangeOption } from "@/lib/types"
 import {
   Table,
   TableBody,
@@ -13,21 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-type Monitor = {
-  id: string
-  name: string
-  type: "http" | "tcp"
-  active: boolean
-  lastStatus: "up" | "down" | null
-  intervalSeconds: number
-  lastCheckedAt: string | Date | null
-  uptimeSeries: number[]
-  latencySeries: number[]
-  tags?: string[]
-}
-
 type MonitorTableProps = {
-  monitors: Monitor[]
+  monitors: DashboardMonitor[]
 }
 
 const RANGE_SECONDS: Record<RangeOption, number> = {

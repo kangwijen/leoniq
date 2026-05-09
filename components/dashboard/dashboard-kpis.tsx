@@ -1,12 +1,8 @@
 import { Activity, Gauge, ShieldCheck, TimerReset } from "lucide-react"
-
-type Monitor = {
-  active: boolean
-  lastStatus: "up" | "down" | null
-}
+import type { DashboardKpiMonitor } from "@/lib/types"
 
 type DashboardKpisProps = {
-  monitors: Monitor[]
+  monitors: DashboardKpiMonitor[]
 }
 
 export const DashboardKpis = ({ monitors }: DashboardKpisProps) => {

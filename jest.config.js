@@ -12,7 +12,18 @@ const config = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
   },
-  testMatch: ["<rootDir>/tests/**/*.test.ts", "<rootDir>/tests/**/*.test.tsx"],
+  collectCoverageFrom: [
+    "<rootDir>/app/**/*.{js,jsx,ts,tsx}",
+    "<rootDir>/components/**/*.{js,jsx,ts,tsx}",
+    "<rootDir>/hooks/**/*.{js,jsx,ts,tsx}",
+    "<rootDir>/lib/**/*.{js,jsx,ts,tsx}",
+    "<rootDir>/worker/**/*.{js,jsx,ts,tsx}",
+    "<rootDir>/proxy.ts",
+    "!<rootDir>/**/*.d.ts",
+    "!<rootDir>/**/node_modules/**",
+    "!<rootDir>/components/ui/**",
+    "!<rootDir>/lib/db/schema.ts",
+  ],
   coverageThreshold: {
     global: {
       statements: 100,

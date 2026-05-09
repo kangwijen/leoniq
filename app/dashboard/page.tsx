@@ -8,6 +8,7 @@ import { WebhookSettings } from "@/components/dashboard/webhook-settings"
 import { userRepository } from "@/lib/user/repository"
 import { summarizeRecentIncidentsFromSamples } from "@/lib/monitor/incidents-summary"
 import { DashboardLiveSections } from "@/components/dashboard/dashboard-live-sections"
+import type { MonitorCheckStatus, MonitorKind } from "@/lib/types"
 
 export default async function DashboardPage() {
   const session = await requireSession()
@@ -36,7 +37,7 @@ export default async function DashboardPage() {
       monitorId: sample.monitorId,
       monitorName: sample.monitorName,
       checkedAt: sample.checkedAt,
-      status: sample.status as "up" | "down",
+      status: sample.status as MonitorCheckStatus,
       errorMessage: sample.errorMessage,
     })),
     15
@@ -72,16 +73,17 @@ export default async function DashboardPage() {
       <DashboardKpis
         monitors={monitors.map(item => ({
           active: item.active,
-          lastStatus: (item.lastStatus as "up" | "down" | null) ?? null,
+          lastStatus: (item.lastStatus as MonitorCheckStatus | null) ?? null,
         }))}
       />
+      {/* Operation samples load server-side and feed NeonOperationsWall, including range-bound anomaly heuristics on the client */}
       <DashboardLiveSections
         samples={operationSamples.map(sample => ({
           monitorId: sample.monitorId,
           monitorName: sample.monitorName,
-          monitorType: sample.monitorType as "http" | "tcp",
+          monitorType: sample.monitorType as MonitorKind,
           checkedAt: sample.checkedAt.toISOString(),
-          status: sample.status as "up" | "down",
+          status: sample.status as MonitorCheckStatus,
           latencyMs: sample.latencyMs,
           statusCode: sample.statusCode,
           errorMessage: sample.errorMessage,
@@ -89,8 +91,8 @@ export default async function DashboardPage() {
         }))}
         monitors={monitors.map(item => ({
           ...item,
-          type: item.type as "http" | "tcp",
-          lastStatus: (item.lastStatus as "up" | "down" | null) ?? null,
+          type: item.type as MonitorKind,
+          lastStatus: (item.lastStatus as MonitorCheckStatus | null) ?? null,
           uptimeSeries: seriesByMonitorId.get(item.id) as number[],
           latencySeries: latencySeriesByMonitorId.get(item.id) as number[],
           tags: item.tags ?? [],

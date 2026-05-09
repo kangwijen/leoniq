@@ -12,37 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MonitorTable } from "@/components/dashboard/monitor-table"
-import { NeonOperationsWall, type RangeOption } from "@/components/dashboard/neon-operations-wall"
+import { NeonOperationsWall } from "@/components/dashboard/neon-operations-wall"
 import type { RecentIncidentSummary } from "@/lib/monitor/incidents-summary"
-
-type Sample = {
-  monitorId: string
-  monitorName: string
-  monitorType: "http" | "tcp"
-  checkedAt: string
-  status: "up" | "down"
-  latencyMs: number | null
-  statusCode: number | null
-  errorMessage: string | null
-  meta: Record<string, unknown> | null
-}
-
-type Monitor = {
-  id: string
-  name: string
-  type: "http" | "tcp"
-  active: boolean
-  lastStatus: "up" | "down" | null
-  intervalSeconds: number
-  lastCheckedAt: string | Date | null
-  uptimeSeries: number[]
-  latencySeries: number[]
-  tags?: string[]
-}
+import type { DashboardCheckSample, DashboardMonitor, MonitorKind, RangeOption } from "@/lib/types"
 
 type DashboardLiveSectionsProps = {
-  samples: Sample[]
-  monitors: Monitor[]
+  samples: DashboardCheckSample[]
+  monitors: DashboardMonitor[]
   recentIncidents?: RecentIncidentSummary[]
 }
 
@@ -56,11 +32,11 @@ export const DashboardLiveSections = ({
   const searchParams = useSearchParams()
   const queryType = searchParams.get("type")
   const queryTag = searchParams.get("tag")
-  const initialType: "all" | "http" | "tcp" =
+  const initialType: "all" | MonitorKind =
     queryType === "http" || queryType === "tcp" ? queryType : "all"
   const initialTag = queryTag && queryTag.trim().length > 0 ? queryTag.trim() : "all"
   const [range, setRange] = useState<RangeOption>("24h")
-  const [typeFilter, setTypeFilter] = useState<"all" | "http" | "tcp">(initialType)
+  const [typeFilter, setTypeFilter] = useState<"all" | MonitorKind>(initialType)
   const [tagFilter, setTagFilter] = useState<string>(initialTag)
 
   const availableTags = Array.from(
@@ -90,7 +66,7 @@ export const DashboardLiveSections = ({
   const currentQuery = searchParams.toString()
 
   const updateUrl = useMemo(
-    () => (nextType: "all" | "http" | "tcp", nextTag: string) => {
+    () => (nextType: "all" | MonitorKind, nextTag: string) => {
       const params = new URLSearchParams(searchParams.toString())
       if (nextType === "all") {
         params.delete("type")
@@ -115,6 +91,7 @@ export const DashboardLiveSections = ({
 
   return (
     <>
+      {/* Anomaly heuristics read `filteredSamples` and the selected range inside NeonOperationsWall so signals stay aligned with chart buckets */}
       <NeonOperationsWall
         samples={filteredSamples}
         range={range}
@@ -139,7 +116,7 @@ export const DashboardLiveSections = ({
                 <Select
                   value={typeFilter}
                   onValueChange={value => {
-                    const nextType = value as "all" | "http" | "tcp"
+                    const nextType = value as "all" | MonitorKind
                     setTypeFilter(nextType)
                     updateUrl(nextType, effectiveTagFilter)
                   }}

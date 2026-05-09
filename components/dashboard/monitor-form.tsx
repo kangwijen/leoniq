@@ -14,13 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-type MonitorType = "http" | "tcp"
+import type { MonitorKind } from "@/lib/types"
 
 export const MonitorForm = () => {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [type, setType] = useState<MonitorType>("http")
+  const [type, setType] = useState<MonitorKind>("http")
   const [name, setName] = useState("")
   const [url, setUrl] = useState("https://example.com")
   const [host, setHost] = useState("example.com")
@@ -111,7 +110,7 @@ export const MonitorForm = () => {
 
           <div className="grid gap-2">
             <Label>Monitor type</Label>
-            <Select value={type} onValueChange={value => setType(value as MonitorType)}>
+            <Select value={type} onValueChange={value => setType(value as MonitorKind)}>
               <SelectTrigger className="h-11 cursor-pointer">
                 <SelectValue />
               </SelectTrigger>

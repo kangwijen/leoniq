@@ -1,8 +1,10 @@
+import type { MonitorCheckStatus } from "@/lib/types"
+
 export type IncidentSummaryInput = {
   monitorId: string
   monitorName: string
   checkedAt: Date | string
-  status: "up" | "down"
+  status: MonitorCheckStatus
   errorMessage: string | null
 }
 

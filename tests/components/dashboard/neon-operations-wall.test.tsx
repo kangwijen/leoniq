@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react"
+import { detectDashboardAnomalies } from "@/lib/monitor/anomaly-detection"
 import { NeonOperationsWall } from "@/components/dashboard/neon-operations-wall"
 
 jest.mock("@/components/ui/select", () => ({
@@ -26,6 +27,16 @@ jest.mock("@/components/ui/select", () => ({
     children: React.ReactNode
   }) => <option value={value}>{children}</option>,
 }))
+
+jest.mock("@/lib/monitor/anomaly-detection", () => {
+  const actual = jest.requireActual("@/lib/monitor/anomaly-detection") as typeof import("@/lib/monitor/anomaly-detection")
+  return {
+    ...actual,
+    detectDashboardAnomalies: jest.fn((...args: Parameters<typeof actual.detectDashboardAnomalies>) =>
+      actual.detectDashboardAnomalies(...args)
+    ),
+  }
+})
 
 jest.mock("recharts", () => {
   const passthrough = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
@@ -67,6 +78,10 @@ jest.mock("recharts", () => {
 
 type Sample = React.ComponentProps<typeof NeonOperationsWall>["samples"][number]
 
+const mockDetectDashboardAnomalies = detectDashboardAnomalies as jest.MockedFunction<
+  typeof detectDashboardAnomalies
+>
+
 const makeSample = (
   checkedAt: string,
   status: "up" | "down",
@@ -87,6 +102,11 @@ const makeSample = (
 })
 
 describe("NeonOperationsWall", () => {
+  beforeEach(() => {
+    const actual = jest.requireActual("@/lib/monitor/anomaly-detection") as typeof import("@/lib/monitor/anomaly-detection")
+    mockDetectDashboardAnomalies.mockImplementation((...args) => actual.detectDashboardAnomalies(...args))
+  })
+
   it("uses 24h as default range selection", () => {
     const now = Date.now()
     const samples = [
@@ -137,6 +157,7 @@ describe("NeonOperationsWall", () => {
     expect(screen.getByText("Latency Percentiles")).toBeInTheDocument()
     expect(screen.getByText("Uptime Timeline")).toBeInTheDocument()
     expect(screen.getByText("Recent incidents")).toBeInTheDocument()
+    expect(screen.getByText("Anomaly signals")).toBeInTheDocument()
     expect(screen.getByText("Showing incidents in selected range.")).toBeInTheDocument()
     expect(screen.getByText("Status Code Distribution")).toBeInTheDocument()
     expect(screen.getByText("Response Size Trend")).toBeInTheDocument()
@@ -340,6 +361,101 @@ describe("NeonOperationsWall", () => {
     )
 
     expect(screen.getByText("Open")).toBeInTheDocument()
+  })
+
+  it("renders normal latency badges when latency is stable but uptime signals anomaly", () => {
+    mockDetectDashboardAnomalies.mockReturnValue({
+      latency: {
+        status: "normal",
+        baselineP95: 100,
+        observedP95: 105,
+        deltaPercent: 5,
+        modifiedZ: 0.5,
+        reason: "Latency within expected variation for recent buckets",
+      },
+      uptime: {
+        status: "anomaly",
+        minRecentUptime: 70,
+        recentBucketsChecked: 3,
+        trailingDownStreak: 0,
+        shortWindowBurnRate: 12,
+        longWindowBurnRate: 3,
+        sloAvailability: 0.99,
+        reason: "Error budget burn is high on recent checks (~12x) and elevated over the full window (~3x) vs 99% availability",
+      },
+    })
+
+    render(<NeonOperationsWall samples={[]} />)
+
+    expect(screen.getByText("Latency within expected variation for recent buckets")).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        "Error budget burn is high on recent checks (~12x) and elevated over the full window (~3x) vs 99% availability"
+      )
+    ).toBeInTheDocument()
+
+    const latencyRow = screen.getByText("Latency p95").closest("div")
+    expect(latencyRow).not.toBeNull()
+    expect(within(latencyRow as HTMLElement).getByText("Normal")).toBeInTheDocument()
+
+    const uptimeRow = screen.getByText("Uptime").closest("div")
+    expect(uptimeRow).not.toBeNull()
+    expect(within(uptimeRow as HTMLElement).getByText("Anomaly")).toBeInTheDocument()
+  })
+
+  it("renders anomaly reasons returned by the detector", () => {
+    mockDetectDashboardAnomalies.mockReturnValue({
+      latency: {
+        status: "anomaly",
+        baselineP95: 100,
+        observedP95: 300,
+        deltaPercent: 200,
+        modifiedZ: 4,
+        reason: "Latest bucket p95 300 ms vs baseline median 100 ms",
+      },
+      uptime: {
+        status: "normal",
+        minRecentUptime: 99,
+        recentBucketsChecked: 3,
+        trailingDownStreak: 0,
+        shortWindowBurnRate: 0.5,
+        longWindowBurnRate: 0.4,
+        sloAvailability: 0.99,
+        reason: "Uptime within expected range for error budget and trailing checks",
+      },
+    })
+
+    render(<NeonOperationsWall samples={[]} />)
+
+    expect(screen.getByText("Latest bucket p95 300 ms vs baseline median 100 ms")).toBeInTheDocument()
+    expect(screen.getByText("Uptime within expected range for error budget and trailing checks")).toBeInTheDocument()
+    expect(screen.getAllByText("Anomaly").length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("recomputes anomalies when the time range changes", () => {
+    const now = Date.now()
+    const samples = [
+      makeSample(new Date(now - 15 * 60 * 1000).toISOString(), "up", 100),
+      makeSample(new Date(now - 45 * 60 * 1000).toISOString(), "up", 110),
+      makeSample(new Date(now - 12 * 60 * 60 * 1000).toISOString(), "up", 105),
+      makeSample(new Date(now - 36 * 60 * 60 * 1000).toISOString(), "up", 108),
+    ]
+
+    render(<NeonOperationsWall samples={samples} />)
+
+    const firstBucketLen = mockDetectDashboardAnomalies.mock.calls[0][0].length
+
+    fireEvent.change(screen.getByLabelText("Time range"), { target: { value: "1h" } })
+
+    const lastBucketLen = mockDetectDashboardAnomalies.mock.calls[mockDetectDashboardAnomalies.mock.calls.length - 1][0]
+      .length
+
+    expect(lastBucketLen).not.toBe(firstBucketLen)
+  })
+
+  it("shows not enough data when samples cannot bucket anomalies", () => {
+    render(<NeonOperationsWall samples={[]} />)
+    expect(screen.getAllByText("Not enough data").length).toBe(2)
   })
 
   it("filters recent incidents by selected time range", () => {

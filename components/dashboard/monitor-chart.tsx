@@ -10,20 +10,29 @@ import {
   YAxis,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-type MonitorPoint = {
-  checkedAt: string
-  latencyMs: number | null
-  status: "up" | "down"
-}
+import type { MonitorChartPoint, RangeOption } from "@/lib/types"
 
 type MonitorChartProps = {
   title: string
-  data: MonitorPoint[]
+  data: MonitorChartPoint[]
   mode?: "latency" | "uptime"
+  timeRange?: RangeOption
 }
 
-export const MonitorChart = ({ title, data, mode = "latency" }: MonitorChartProps) => {
+const formatChartTick = (value: string | number, range: RangeOption | undefined) => {
+  const date = new Date(value)
+  if (range === "7d") {
+    return date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+  return date.toLocaleTimeString()
+}
+
+export const MonitorChart = ({ title, data, mode = "latency", timeRange }: MonitorChartProps) => {
   const chartData =
     mode === "uptime"
       ? data.map(point => ({
@@ -45,7 +54,7 @@ export const MonitorChart = ({ title, data, mode = "latency" }: MonitorChartProp
               <XAxis
                 dataKey="checkedAt"
                 tick={{ fill: "#a1a1aa", fontSize: 12 }}
-                tickFormatter={value => new Date(value).toLocaleTimeString()}
+                tickFormatter={value => formatChartTick(value, timeRange)}
               />
               <YAxis
                 tick={{ fill: "#a1a1aa", fontSize: 12 }}

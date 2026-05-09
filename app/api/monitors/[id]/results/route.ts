@@ -22,17 +22,18 @@ export async function GET(
   const rows = await checkResultsRepository.listByMonitor(monitor.id, from, 1000)
   const stats = await checkResultsRepository.statsByMonitor(monitor.id)
 
+  const totalChecks = Number(stats?.totalChecks ?? 0)
+  const upChecks = Number(stats?.upChecks ?? 0)
+  const uptimePercent =
+    totalChecks > 0 ? Math.round((upChecks / totalChecks) * 10000) / 100 : 0
+
   return NextResponse.json({
     data: rows,
     stats: {
-      totalChecks: Number(stats?.totalChecks ?? 0),
-      upChecks: Number(stats?.upChecks ?? 0),
+      totalChecks,
+      upChecks,
       avgLatency: Number(stats?.avgLatency ?? 0),
-      uptimePercent:
-        Number(stats?.totalChecks ?? 0) > 0
-          ? Math.round((Number(stats?.upChecks ?? 0) / Number(stats?.totalChecks ?? 1)) * 10000) /
-            100
-          : 0,
+      uptimePercent,
     },
   })
 }

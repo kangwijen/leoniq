@@ -1,3 +1,4 @@
+import type { MonitorCheckStatus } from "@/lib/types"
 import { validateHttpUrl } from "./validation"
 
 export type HttpCheckInput = {
@@ -9,7 +10,7 @@ export type HttpCheckInput = {
 }
 
 export type CheckResult = {
-  status: "up" | "down"
+  status: MonitorCheckStatus
   latencyMs: number
   statusCode?: number
   errorMessage?: string

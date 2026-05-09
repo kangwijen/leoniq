@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, sql } from "drizzle-orm"
 import { db } from "@/lib/db/client"
 import { checkResults, monitors } from "@/lib/db/schema"
+import type { MonitorCheckStatus, MonitorKind } from "@/lib/types"
 
 type ListMonitorInput = {
   userId: string
@@ -9,7 +10,7 @@ type ListMonitorInput = {
 type CreateMonitorInput = {
   userId: string
   name: string
-  type: "http" | "tcp"
+  type: MonitorKind
   url?: string | null
   host?: string | null
   port?: number | null
@@ -95,7 +96,7 @@ export const monitorRepository = {
 export const checkResultsRepository = {
   create: async (input: {
     monitorId: string
-    status: "up" | "down"
+    status: MonitorCheckStatus
     latencyMs: number
     statusCode?: number
     errorMessage?: string
@@ -123,6 +124,17 @@ export const checkResultsRepository = {
       .where(and(...filters))
       .orderBy(asc(checkResults.checkedAt))
       .limit(limit)
+  },
+
+  listByMonitorRecentSince: async (monitorId: string, from: Date, limit = 6000) => {
+    const rows = await db
+      .select()
+      .from(checkResults)
+      .where(and(eq(checkResults.monitorId, monitorId), gte(checkResults.checkedAt, from)))
+      .orderBy(desc(checkResults.checkedAt))
+      .limit(limit)
+
+    return [...rows].reverse()
   },
 
   listByUserSince: async (userId: string, from: Date, limit = 6000) =>

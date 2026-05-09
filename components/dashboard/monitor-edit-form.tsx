@@ -14,14 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-type MonitorType = "http" | "tcp"
+import type { MonitorKind } from "@/lib/types"
 
 type MonitorEditFormProps = {
   monitor: {
     id: string
     name: string
-    type: MonitorType
+    type: MonitorKind
     url: string | null
     host: string | null
     port: number | null
@@ -35,7 +34,7 @@ type MonitorEditFormProps = {
 export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [type, setType] = useState<MonitorType>(monitor.type)
+  const [type, setType] = useState<MonitorKind>(monitor.type)
   const [name, setName] = useState(monitor.name)
   const [url, setUrl] = useState(monitor.url ?? "https://example.com")
   const [host, setHost] = useState(monitor.host ?? "example.com")
@@ -127,7 +126,7 @@ export const MonitorEditForm = ({ monitor }: MonitorEditFormProps) => {
 
           <div className="grid gap-2">
             <Label>Monitor type</Label>
-            <Select value={type} onValueChange={value => setType(value as MonitorType)}>
+            <Select value={type} onValueChange={value => setType(value as MonitorKind)}>
               <SelectTrigger className="h-11 cursor-pointer">
                 <SelectValue />
               </SelectTrigger>
