@@ -91,13 +91,13 @@ export const MonitorTable = ({ monitors }: MonitorTableProps) => (
             </div>
             <div className="col-span-2 grid grid-cols-2 gap-3">
               <div className="min-w-0">
-                <p className="mb-1 text-xs text-zinc-500">Uptime</p>
+                <p className="mb-1 text-xs text-zinc-500">Uptime (24h)</p>
                 <UptimeSparkline
                   values={toRangeSeries(monitor.uptimeSeries, monitor.intervalSeconds, SPARKLINE_RANGE)}
                 />
               </div>
               <div className="min-w-0">
-                <p className="mb-1 text-xs text-zinc-500">Latency</p>
+                <p className="mb-1 text-xs text-zinc-500">Latency (24h)</p>
                 <LatencySparkline
                   values={toRangeSeries(monitor.latencySeries, monitor.intervalSeconds, SPARKLINE_RANGE)}
                 />
@@ -120,8 +120,8 @@ export const MonitorTable = ({ monitors }: MonitorTableProps) => (
             <TableHead className="text-zinc-300">Type</TableHead>
             <TableHead className="text-zinc-300">Status</TableHead>
             <TableHead className="text-zinc-300">Interval</TableHead>
-            <TableHead className="text-zinc-300">Uptime</TableHead>
-            <TableHead className="text-zinc-300">Latency</TableHead>
+            <TableHead className="text-zinc-300">Uptime (24h)</TableHead>
+            <TableHead className="text-zinc-300">Latency (24h)</TableHead>
             <TableHead className="text-zinc-300">Last Check</TableHead>
             <TableHead className="text-right text-zinc-300">Actions</TableHead>
           </TableRow>

@@ -10,7 +10,7 @@ describe("UptimeSparkline", () => {
   it("renders svg with green styling when latest value is up", () => {
     render(<UptimeSparkline values={[1, 1, 0, 1]} />)
     const img = screen.getByRole("img", {
-      name: "Recent uptime trend, latest state up",
+      name: "Uptime past 24 hours, latest state up",
     })
     expect(img).toBeInTheDocument()
   })
@@ -19,7 +19,7 @@ describe("UptimeSparkline", () => {
     render(<UptimeSparkline values={[1, 0]} />)
     expect(
       screen.getByRole("img", {
-        name: "Recent uptime trend, latest state down",
+        name: "Uptime past 24 hours, latest state down",
       })
     ).toBeInTheDocument()
   })

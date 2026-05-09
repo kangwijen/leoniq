@@ -65,7 +65,7 @@ jest.mock("@/lib/monitor/repository", () => ({
   },
   checkResultsRepository: {
     listByUserSince: jest.fn(),
-    listByMonitor: jest.fn(),
+    listByMonitorRecentSince: jest.fn(),
   },
 }))
 
@@ -75,8 +75,8 @@ const mockMonitorList = monitorRepository.list as jest.MockedFunction<typeof mon
 const mockListByUserSince = checkResultsRepository.listByUserSince as jest.MockedFunction<
   typeof checkResultsRepository.listByUserSince
 >
-const mockListByMonitor = checkResultsRepository.listByMonitor as jest.MockedFunction<
-  typeof checkResultsRepository.listByMonitor
+const mockListByMonitorRecentSince = checkResultsRepository.listByMonitorRecentSince as jest.MockedFunction<
+  typeof checkResultsRepository.listByMonitorRecentSince
 >
 
 describe("DashboardPage orchestration", () => {
@@ -110,7 +110,7 @@ describe("DashboardPage orchestration", () => {
       "user-1",
       new Date("2026-04-30T12:00:00.000Z")
     )
-    expect(mockListByMonitor).not.toHaveBeenCalled()
+    expect(mockListByMonitorRecentSince).not.toHaveBeenCalled()
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-samples", "0")
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-monitors", "0")
 
@@ -118,6 +118,9 @@ describe("DashboardPage orchestration", () => {
   })
 
   it("renders monitor table when monitors exist", async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date("2026-05-07T12:00:00.000Z"))
+
     mockRequireSession.mockResolvedValue({
       user: {
         id: "user-1",
@@ -187,7 +190,7 @@ describe("DashboardPage orchestration", () => {
         meta: { responseBytes: 1024 },
       },
     ] as Awaited<ReturnType<typeof checkResultsRepository.listByUserSince>>)
-    mockListByMonitor.mockImplementation(async monitorId => {
+    mockListByMonitorRecentSince.mockImplementation(async monitorId => {
       if (monitorId === "monitor-1") {
         return [
           {
@@ -206,10 +209,10 @@ describe("DashboardPage orchestration", () => {
             checkedAt: new Date("2026-05-07T12:00:00.000Z"),
             errorMessage: "timeout",
           },
-        ] as Awaited<ReturnType<typeof checkResultsRepository.listByMonitor>>
+        ] as Awaited<ReturnType<typeof checkResultsRepository.listByMonitorRecentSince>>
       }
 
-      return [] as Awaited<ReturnType<typeof checkResultsRepository.listByMonitor>>
+      return [] as Awaited<ReturnType<typeof checkResultsRepository.listByMonitorRecentSince>>
     })
 
     render(await DashboardPage())
@@ -217,12 +220,24 @@ describe("DashboardPage orchestration", () => {
     expect(mockRequireSession).toHaveBeenCalledTimes(1)
     expect(mockMonitorList).toHaveBeenCalledWith({ userId: "user-1" })
     expect(mockListByUserSince).toHaveBeenCalledTimes(1)
-    expect(mockListByMonitor).toHaveBeenNthCalledWith(1, "monitor-1", undefined, 20)
-    expect(mockListByMonitor).toHaveBeenNthCalledWith(2, "monitor-2", undefined, 20)
+    expect(mockListByMonitorRecentSince).toHaveBeenNthCalledWith(
+      1,
+      "monitor-1",
+      new Date("2026-05-06T12:00:00.000Z"),
+      1540
+    )
+    expect(mockListByMonitorRecentSince).toHaveBeenNthCalledWith(
+      2,
+      "monitor-2",
+      new Date("2026-05-06T12:00:00.000Z"),
+      1540
+    )
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-samples", "1")
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-monitors", "2")
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-null-status", "true")
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-empty-series", "true")
     expect(screen.getByTestId("dashboard-live-sections")).toHaveAttribute("data-empty-latency", "true")
+
+    jest.useRealTimers()
   })
 })

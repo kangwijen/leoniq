@@ -9,11 +9,11 @@ describe("LatencySparkline", () => {
 
   it("renders svg trend with accessible label", () => {
     render(<LatencySparkline values={[120, 200, 140]} />)
-    expect(screen.getByRole("img", { name: "Recent latency trend, latest 140 milliseconds" })).toBeInTheDocument()
+    expect(screen.getByRole("img", { name: "Latency past 24 hours, latest 140 milliseconds" })).toBeInTheDocument()
   })
 
   it("handles flat latency series without divide by zero", () => {
     render(<LatencySparkline values={[100, 100, 100]} />)
-    expect(screen.getByRole("img", { name: "Recent latency trend, latest 100 milliseconds" })).toBeInTheDocument()
+    expect(screen.getByRole("img", { name: "Latency past 24 hours, latest 100 milliseconds" })).toBeInTheDocument()
   })
 })

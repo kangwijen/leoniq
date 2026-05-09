@@ -23,7 +23,7 @@ export const UptimeSparkline = ({ values }: UptimeSparklineProps) => {
   const last = values[values.length - 1]
   const strokeColor = last === 1 ? "#22c55e" : "#ef4444"
   const fillColor = last === 1 ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.18)"
-  const label = `Recent uptime trend, latest state ${last === 1 ? "up" : "down"}`
+  const label = `Uptime past 24 hours, latest state ${last === 1 ? "up" : "down"}`
 
   return (
     <svg

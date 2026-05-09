@@ -8,18 +8,33 @@ import { WebhookSettings } from "@/components/dashboard/webhook-settings"
 import { userRepository } from "@/lib/user/repository"
 import { summarizeRecentIncidentsFromSamples } from "@/lib/monitor/incidents-summary"
 import { DashboardLiveSections } from "@/components/dashboard/dashboard-live-sections"
-import type { MonitorCheckStatus, MonitorKind } from "@/lib/types"
+import { RANGE_MS, type MonitorCheckStatus, type MonitorKind } from "@/lib/types"
+
+const SPARKLINE_RANGE_MS = RANGE_MS["24h"]
+
+function sparklineSampleLimit(intervalSeconds: number) {
+  const periodMs = Math.max(1, intervalSeconds) * 1000
+  const maxChecksInWindow = Math.ceil(SPARKLINE_RANGE_MS / periodMs)
+  return Math.min(6000, Math.max(1, maxChecksInWindow) + 100)
+}
 
 export default async function DashboardPage() {
   const session = await requireSession()
   const user = await userRepository.getById(session.user.id)
   const monitors = await monitorRepository.list({ userId: session.user.id })
-  const sevenDaysAgo = new Date()
+  const servedAt = new Date()
+  const sevenDaysAgo = new Date(servedAt)
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
   const operationSamples = await checkResultsRepository.listByUserSince(session.user.id, sevenDaysAgo)
+  const sparklineSince = new Date(servedAt.getTime() - SPARKLINE_RANGE_MS)
   const monitorSeries = await Promise.all(
     monitors.map(async monitor => {
-      const points = await checkResultsRepository.listByMonitor(monitor.id, undefined, 20)
+      const limit = sparklineSampleLimit(monitor.intervalSeconds)
+      const points = await checkResultsRepository.listByMonitorRecentSince(
+        monitor.id,
+        sparklineSince,
+        limit
+      )
       return {
         monitorId: monitor.id,
         series: points.map(point => (point.status === "up" ? 1 : 0)),

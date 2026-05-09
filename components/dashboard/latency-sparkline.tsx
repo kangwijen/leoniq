@@ -25,7 +25,7 @@ export const LatencySparkline = ({ values }: LatencySparklineProps) => {
 
   const fillPoints = `${points} ${width - 1},${height} 0,${height}`
   const latest = values[values.length - 1]
-  const label = `Recent latency trend, latest ${Math.round(latest)} milliseconds`
+  const label = `Latency past 24 hours, latest ${Math.round(latest)} milliseconds`
 
   return (
     <svg
